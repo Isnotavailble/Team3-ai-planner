@@ -1,87 +1,102 @@
-# Lattice B2B Strategic Planner - Project Documentation
+# Strivo AI Strategic Planner - Project Documentation
 
-This document serves as a comprehensive overview of the **Lattice B2B Strategic Planner** codebase. It is designed to provide complete context on the application's architecture, data flow, component structure, and styling strategy.
+This document serves as a comprehensive overview of the **Strivo AI Strategic Planner** codebase. It is designed to provide complete context on the application's architecture, data flow, component structure, and styling strategy.
+
+---
 
 ## 1. Project Overview
-Lattice B2B is a React-based intelligence and strategy simulation dashboard tailored for the SME market. It allows business users to visualize market relationships (retailers, competitors, wholesale distributors), ingest intelligence signals, and run simulated "what-if" scenarios (predicting market shifts and interrogating AI agents). 
 
-The application recently underwent a UI overhaul, transitioning from a complex, developer-centric git-branching visualizer to a clean, premium executive dashboard.
+**Strivo AI Strategic Planner** (formerly Lattice B2B) is a modern, React-based intelligence and strategy simulation dashboard tailored for B2B and SME markets. It enables business users to visualize market relationships (retailers, competitors, wholesale distributors), ingest intelligence signals, and run simulated "what-if" scenarios powered by swarm-intelligence mock agents. 
 
-## 2. Technology Stack
+The application recently underwent a major upgrade, transforming from a developer-centric visualization tool to a premium, executive-level strategic hub.
+
+---
+
+## 2. Key Enhancements & New Features
+
+### 💬 Interactive Chat-Based Onboarding
+* **Dynamic Context Ingestion**: Instead of rigid forms, users can describe their market structure in natural language.
+* **AI Dialogue Flow**: An AI assistant interrogates the user for missing details (such as budget, sales, and challenges) to generate a complete business profile.
+
+### 📊 Categorized Metrics Dashboard Section
+Once the business profile is generated, a new multi-dimensional metrics section is shown on the dashboard via [CategorizedMetrics.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/CategorizedMetrics.jsx):
+* **Financial Health**: Visualizes actual vs. target revenue over a 6-month period and breaks down budget allocation (Marketing, Operations, Software) dynamically.
+* **Sales & Market Penetration**: Projects sales velocity trends over 30 days.
+* **Customer Acquisition**: Displays relative marketing channel effectiveness and segment alignment (SMBs, Enterprise, Retail) based on onboarding profiles.
+
+### 🧠 Promoted Full-Page AI Predictive Simulation
+* **Full-Page Sim Experience**: The simulator has been promoted from a small drawer panel to a dedicated, high-impact workspace page ([AIReportPage.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/AIReportPage.jsx)).
+* **Interactive Probability Charts**: Uses a vertical bar chart to cleanly render the probabilities of key scenario pathways.
+* **Post-Simulation Agent Interrogation**: Allows the user to directly click and interrogate simulated B2B actors to understand their reasoning.
+
+### ⚙️ Developer Mode Graph Toggle
+* **Resource Optimization**: The SVG physics-based relationship map is now hidden behind a **Dev Mode Toggle** on the dashboard card ([MarketGraphCard.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/MarketGraphCard.jsx)). This prevents high resource consumption on page load and optimizes performance.
+
+---
+
+## 3. Technology Stack
+
 * **Core Framework**: React 19 (via Vite)
 * **Routing**: React Router DOM v7
-* **Styling**: Tailwind CSS v3 + Vanilla CSS Variables (`index.css`)
+* **Styling**: Tailwind CSS v3 + Vanilla CSS Variables ([index.css](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/index.css))
 * **Animations**: Framer Motion
-* **Data Visualization**: Recharts (Line/Area charts), Custom SVG Physics Engine (Network Graph)
+* **Data Visualization**: Recharts (Line, Area, Pie, and Bar charts)
 * **Icons**: Lucide React
 
-## 3. Core Architecture & Routing (`App.jsx`)
+---
 
-The application is structured around a global `Layout` component and a dynamic `Dashboard` view.
+## 4. Core Architecture & Routing (`App.jsx`)
 
-* **`/` (Root)**: Renders the `Onboarding` component. A guided flow where users can drag-and-drop simulated supplier CSVs/PDFs or manually type market context to generate the initial graph.
-* **`/workspace`**: The main Executive Dashboard. It contains:
-  * Top KPI Cards (`DynamicKPICards`)
-  * Data Visualization (`TrendChart`, `RecentSignals`)
-  * The network graph wrapped in a card (`MarketGraphCard`)
-* **Sidebar Drawers**: Child routes trigger sliding sidebar panels (`AnimatePresence` + `motion.div`) overlapping the dashboard:
-  * `/workspace/drilldown`: Detailed view of a selected graph node.
-  * `/workspace/predict`: The `Simulator` setup and execution panel.
-  * `/workspace/chat`: The `AgentChat` interface to interrogate simulated market actors.
+The routing structure in [App.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/App.jsx) is optimized to render layouts and dynamic panels seamlessly:
 
-## 4. Data Model & Services
+* **`/` (Root)**: Renders the [Onboarding](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Onboarding/Onboarding.jsx) component. Users can input details manually or complete an interactive AI chat onboarding sequence.
+* **`/workspace`**: The Executive Dashboard, featuring:
+  * **Dynamic KPI Cards** with sparklines.
+  * **Categorized Metrics** containing financial, sales, and channel charts.
+  * **Historical Trend Charts** and **Recent Intelligence Signals**.
+  * **Market Relationship Map** wrapped in a Dev Mode toggled panel.
+* **`/workspace/predict`**: Renders the dedicated full-page [AIReportPage](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/AIReportPage.jsx) simulation suite.
+* **Sidebar Drawers**: Slide-in panels handled on child routes:
+  * `/workspace/drilldown`: Detailed panel of a selected node.
+  * `/workspace/chat`: The agent interrogation panel to chat with simulated actors.
 
-### Mock Data (`src/data/mockData.js`)
-Currently, the app is powered by a robust mock dataset representing a localized B2B market (e.g., Yangon Retail Shops, Competitor Platforms, Credit Policies).
-* `RAW_ENTITIES`: Nodes in the graph (types: `you`, `company`, `segment`, `policy`, `concept`, `event`, `product`, `organization`).
-* `RAW_EDGES`: Connections between nodes with a `kind` (strength) and `label`.
-* `RAW_MATERIALS`: Intelligence documents (News leaks, Newsletters).
-* `RAW_SIM_RESULTS`: Pre-calculated verdicts and agent behaviors for the simulation engine.
+---
 
-### Data Transfer Objects (`src/dtos/`)
-To ensure safety when eventually hooking up to a real backend, data is passed through DTO mappers:
-* `entity.dto.js`: Validates entity IDs, categorizes types, enforces coordinate fallbacks.
-* `edge.dto.js`: Validates source (`a`) and target (`b`) IDs and relationship kinds.
-* `simulation.dto.js`: Standardizes probability scenarios and critical agent arrays.
+## 5. Component Structure
 
-### API Service (`src/services/api.js`)
-A singleton class `LatticeApiService` that simulates network latency. It handles fetching workspace data, importing documents (extracting entities), running simulations, and generating chat responses.
+### Dashboard (`src/components/Dashboard/`)
+* **[DynamicKPICards.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/DynamicKPICards.jsx)**: Dynamically computes active retailers, connections, and competitor signals with sparklines.
+* **[CategorizedMetrics.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/CategorizedMetrics.jsx)**: Renders multiple categorized charts mapping the onboarding profile context.
+* **[TrendChart.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/TrendChart.jsx)**: Displays historical and projected sales/market growth data.
+* **[RecentSignals.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/RecentSignals.jsx)**: Lists transactional intelligence documents.
+* **[MarketGraphCard.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/MarketGraphCard.jsx)**: Dashboard card that toggles the SVG physics engine.
 
-## 5. Component Breakdown
-
-### Dashboard Components (`src/components/Dashboard/`)
-* **`DynamicKPICards.jsx`**: Four top-level metric cards. Computes active retailers, connections, competitor signals, and intelligence sources dynamically from the workspace state. Includes Recharts `AreaChart` sparklines.
-* **`TrendChart.jsx`**: A `LineChart` (Recharts) showing historical (solid line) and projected (dashed line) market trends. Supports toggling between Monthly and Quarterly aggregation.
-* **`RecentSignals.jsx`**: A transactional feed rendering `materials`. Maps document types to specific colors and Lucide icons.
-* **`MarketGraphCard.jsx`**: A wrapper that places the custom physics graph inside a dashboard card with a unified legend.
+### Predictive Engine (`src/components/`)
+* **[AIReportPage.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/AIReportPage.jsx)**: Configures parameters, triggers simulation steps, shows system logs, displays vertical probability charts, and routes to agent interrogation.
 
 ### Visualization (`src/components/Graph/`)
-* **`GraphCanvas.jsx`**: A custom-built SVG network graph. 
-  * Features a lightweight physics engine (springs/repulsion) run in a `useEffect` to untangle nodes.
-  * Edges are drawn using quadratic bezier curves (`<motion.path>`) with offset calculations to prevent overlapping bi-directional links.
-  * Supports panning/zooming and node-click isolation (dimming unrelated nodes).
+* **[GraphCanvas.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Graph/GraphCanvas.jsx)**: Custom SVG network graph using lightweight spring and repulsion physics. Includes offset calculations to prevent overlapping paths.
 
-### Sidebar Components (`src/components/Sidebar/`)
-* **`Drilldown.jsx`**: Displays when a node is clicked. Shows the entity summary, connected intelligence materials, and immediate neighbor relationships.
-* **`Simulator.jsx`**: The "Predict Possibility" engine. Allows users to tweak market parameters (Competitor Aggressiveness, Supply Capacity) via sliders, runs a mock 8-step progress bar, and outputs a business verdict with confidence percentages.
+### Drawers & Interrogation (`src/components/Sidebar/` & `src/components/Interrogate/`)
+* **[Drilldown.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Sidebar/Drilldown.jsx)**: Displays context summaries and nearest neighbors for selected entities.
+* **[AgentChat.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Interrogate/AgentChat.jsx)**: Tabbed chat interface simulating dialogue with B2B actors.
 
-### Interrogation (`src/components/Interrogate/`)
-* **`AgentChat.jsx`**: Triggered from the simulation results. A multi-tab chat interface allowing the user to question the AI agents (e.g., "Latha Owner", "Credit Term Policy") about why they made certain decisions in the simulation.
+---
 
 ## 6. Styling Strategy
 
-The project uses a hybrid styling approach designed for high-end B2B aesthetics (often referred to as "UXETO" style):
+Strivo AI integrates a hybrid styling structure designed for premium executive aesthetics:
+1. **CSS Variables ([index.css](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/index.css))**: Defines the semantic design token values (e.g. `--surface-page`, `--surface-card`, `--text-primary`, and specific `--entity-*` node colors).
+2. **Tailwind CSS**: Manages responsive structures, flexboxes, spacing, and typography sizes.
+3. **Micro-animations & Mesh Gradients**: Built-in CSS animations (`customPulse`, custom scrollbars) and Framer Motion spring-based configurations for panel transitions.
 
-1. **CSS Variables (`index.css`)**: Defines the semantic color palette. 
-   * Surfaces: `--surface-page`, `--surface-card`, `--surface-hover`.
-   * Text: `--text-primary`, `--text-secondary`, `--text-tertiary`.
-   * Entity Colors: Distinct hex codes for semantic nodes (e.g., `--entity-company` is Red, `--entity-you` is Slate).
-2. **Tailwind CSS**: Used extensively for structural layouts (Flexbox/Grid), padding, margins, and typography sizing. Tailwind is configured in `tailwind.config.js` to inherit the custom CSS variables where applicable.
-3. **Glassmorphism & Micro-animations**: Defined in `index.css` (e.g., `.glass-card`, `.light-mesh-bg`, `@keyframes customPulse`). Components heavily utilize Framer Motion for spring-based slide-ins and layout transitions.
+---
 
-## 7. Build and Deployment
-* **Bundler**: Vite
-* Commands:
-  * `npm run dev`: Starts local development server.
-  * `npm run build`: Compiles for production. Currently outputs chunks optimized for static hosting.
-  * `npm run lint`: Runs ESLint against standard React rules.
+## 7. Build and Execution Scripts
+
+The project utilizes Vite for bundling and hot reloading. Run the following commands:
+
+* `npm run dev`: Starts the local development server.
+* `npm run build`: Compiles optimized static assets for production deployment.
+* `npm run lint`: Validates source code against ESLint configurations.
+* `npm run preview`: Previews the production build locally.

@@ -5,12 +5,13 @@ import { Play, Plus, HelpCircle, User, LayoutDashboard } from 'lucide-react';
 import api from './services/api';
 import Onboarding from './components/Onboarding/Onboarding';
 import Drilldown from './components/Sidebar/Drilldown';
-import Simulator from './components/Sidebar/Simulator';
+import AIReportPage from './components/AIReportPage/AIReportPage';
 import AgentChat from './components/Interrogate/AgentChat';
 import DynamicKPICards from './components/Dashboard/DynamicKPICards';
 import TrendChart from './components/Dashboard/TrendChart';
 import RecentSignals from './components/Dashboard/RecentSignals';
 import MarketGraphCard from './components/Dashboard/MarketGraphCard';
+import CategorizedMetrics from './components/Dashboard/CategorizedMetrics';
 
 function Layout() {
   const navigate = useNavigate();
@@ -58,16 +59,7 @@ function Layout() {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/workspace/predict')}
-              className="flex items-center gap-1.5 border-none rounded-md cursor-pointer text-xs font-medium"
-              style={{
-                background: 'var(--text-primary)', color: 'var(--text-inverse)',
-                height: '32px', padding: '0 12px'
-              }}
-            >
-              <Play size={12} fill="currentColor" /> Predict Possibility
-            </button>
+
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-1.5 rounded-md cursor-pointer text-xs font-medium"
@@ -101,7 +93,7 @@ function Layout() {
   );
 }
 
-function Dashboard({ workspace }) {
+function Dashboard({ workspace, businessProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -110,8 +102,7 @@ function Dashboard({ workspace }) {
 
   // Determine drawer state from route path
   let drawerType = null;
-  if (location.pathname.includes('/predict')) drawerType = 'simulator';
-  else if (location.pathname.includes('/chat')) drawerType = 'chat';
+  if (location.pathname.includes('/chat')) drawerType = 'chat';
   else if (location.pathname.includes('/drilldown')) drawerType = 'drilldown';
 
   // Keyboard shortcut listener
@@ -142,6 +133,9 @@ function Dashboard({ workspace }) {
     <div className="flex h-full" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {/* MAIN DASHBOARD CONTENT */}
       <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden" style={{ scrollBehavior: 'smooth' }}>
+        {location.pathname.includes('/predict') ? (
+          <AIReportPage onStartInterrogation={handleStartInterrogation} />
+        ) : (
         <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
           {/* Page Title */}
           <div className="flex items-center justify-between">
@@ -167,6 +161,11 @@ function Dashboard({ workspace }) {
           {/* KPI Cards Row */}
           <DynamicKPICards workspace={workspace} />
 
+          {/* Categorized Metrics */}
+          {businessProfile && (
+            <CategorizedMetrics profile={businessProfile} />
+          )}
+
           {/* Two-column layout: Trend Chart + Signals */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-3">
@@ -185,6 +184,7 @@ function Dashboard({ workspace }) {
             onSelectNode={handleSelectNode}
           />
         </div>
+        )}
       </div>
 
       {/* SIDEBAR INLINE DRAWER (WITH SMOOTH SLIDE ANIMATION) */}
@@ -207,12 +207,7 @@ function Dashboard({ workspace }) {
                 edges={workspace.edges}
               />
             )}
-            {drawerType === 'simulator' && (
-              <Simulator
-                onClose={() => navigate('/workspace')}
-                onStartInterrogation={handleStartInterrogation}
-              />
-            )}
+
             {drawerType === 'chat' && (
               <AgentChat
                 agents={chatAgents}
@@ -233,6 +228,16 @@ export default function App() {
     edges: [],
     materials: []
   });
+  const [businessProfile, setBusinessProfile] = useState({
+    businessType: 'B2B SaaS',
+    productService: 'Inventory Management',
+    businessChallenges: 'Market Penetration, Lead Generation',
+    dailySales: '450',
+    monthlyRevenue: '120000',
+    budget: '25000',
+    customerInfo: 'SMB Retailers, Wholesalers',
+    marketingActivities: 'Ads, Content Marketing, B2B Sales'
+  });
 
   const navigate = useNavigate();
 
@@ -245,7 +250,8 @@ export default function App() {
     load();
   }, []);
 
-  const handleOnboardingComplete = (mergedIds) => {
+  const handleOnboardingComplete = (profile) => {
+    setBusinessProfile(profile);
     navigate('/workspace');
   };
 
@@ -258,7 +264,7 @@ export default function App() {
             onSkipToSandbox={() => navigate('/workspace')} 
           />
         } />
-        <Route path="/workspace/*" element={<Dashboard workspace={workspace} />} />
+        <Route path="/workspace/*" element={<Dashboard workspace={workspace} businessProfile={businessProfile} />} />
       </Route>
     </Routes>
   );
