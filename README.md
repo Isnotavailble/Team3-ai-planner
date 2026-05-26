@@ -27,7 +27,16 @@ Once the business profile is generated, a new multi-dimensional metrics section 
 ### 🧠 Promoted Full-Page AI Predictive Simulation
 * **Full-Page Sim Experience**: The simulator has been promoted from a small drawer panel to a dedicated, high-impact workspace page ([AIReportPage.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/AIReportPage.jsx)).
 * **Interactive Probability Charts**: Uses a vertical bar chart to cleanly render the probabilities of key scenario pathways.
-* **Post-Simulation Agent Interrogation**: Allows the user to directly click and interrogate simulated B2B actors to understand their reasoning.
+* **Post-Simulation Agent Consultation**: Allows the user to directly click and consult simulated B2B actors to understand their reasoning.
+
+### 📈 Dynamic Probability Curves & Normal Distribution Model
+* **7-Scenario Spectrum**: Upgraded from a simple binary decision mode to a comprehensive 7-scenario normal distribution curve (ranging from Aggressive Market Capture to Total Market Retreat).
+* **Dynamic Parameter Shifting**: Sliding parameters like competitor aggressiveness shifts the distribution peak and recalculates probabilities dynamically on the AreaChart.
+
+### 🛠️ UX, Tooltip, and Precision Fixes
+* **Recharts Overlapping Dot Deduplication**: Patched the Trend Analysis chart tooltip to deduplicate lines on coordinate overlap.
+* **Floating-Point Precision Fix**: Resolved JS floating point rounding artifacts in financials dashboard cards.
+* **User-Friendly Naming Overhaul**: Replaced developer-centric jargon ("Interrogate Room" -> "AI Simulation Assistant", "AI Copilot" -> "Ask AI", back button cleanup) to maintain a professional, high-end SaaS product tone.
 
 ### ⚙️ Developer Mode Graph Toggle
 * **Resource Optimization**: The SVG physics-based relationship map is now hidden behind a **Dev Mode Toggle** on the dashboard card ([MarketGraphCard.jsx](file:///c:/Users/AnyaWalker/Desktop/GeminiPlayGround/hackathon/strategic-planner/src/components/Dashboard/MarketGraphCard.jsx)). This prevents high resource consumption on page load and optimizes performance.
