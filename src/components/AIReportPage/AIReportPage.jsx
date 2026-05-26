@@ -3,6 +3,7 @@ import { ArrowLeft, Play, Cpu, Crosshair, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
+import SimulationSkeleton from './SimulationSkeleton';
 
 export default function AIReportPage({ onStartInterrogation }) {
   const navigate = useNavigate();
@@ -138,17 +139,7 @@ export default function AIReportPage({ onStartInterrogation }) {
               </button>
             )}
 
-            {stage === 'running' && (
-              <div className="mt-8 space-y-4 animate-fade-in">
-                <div className="flex justify-between text-xs font-medium text-txt-primary">
-                  <span>Calculating probabilities...</span>
-                  <span className="text-txt-primary font-semibold">{Math.round(progress)}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-surface-panel rounded-full overflow-hidden">
-                  <div className="h-full bg-txt-primary transition-all duration-300" style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-            )}
+
             
             {stage === 'results' && (
               <button
@@ -178,17 +169,23 @@ export default function AIReportPage({ onStartInterrogation }) {
 
         {/* Right Column: AI Output */}
         <div className="flex-1 min-w-0">
-          {stage === 'setup' || stage === 'running' ? (
+          {stage === 'setup' && (
             <div className="w-full h-[500px] bg-surface-card rounded-xl border border-border border-dashed flex flex-col items-center justify-center text-txt-tertiary shadow-sm transition-all duration-300">
-              <Cpu size={36} className={`mb-6 text-txt-secondary transition-all duration-500 ${stage === 'running' ? 'animate-pulse opacity-80' : 'opacity-40'}`} />
+              <Cpu size={36} className="mb-6 text-txt-secondary opacity-40" />
               <p className="text-sm font-medium text-txt-secondary">
-                {stage === 'setup' ? 'Configure parameters to run simulation' : 'Running swarm intelligence agents...'}
+                Configure parameters to run simulation
               </p>
               <p className="text-xs mt-2 max-w-sm text-center text-txt-tertiary px-4 leading-relaxed">
                 The AI will generate probabilistic scenarios and uncover hidden market dynamics.
               </p>
             </div>
-          ) : (
+          )}
+
+          {stage === 'running' && (
+            <SimulationSkeleton />
+          )}
+
+          {stage === 'results' && verdictData && (
             <div className="space-y-6 animate-fade-in">
               
               {/* Verdict Summary (Compact Layout & Top-Right Button) */}

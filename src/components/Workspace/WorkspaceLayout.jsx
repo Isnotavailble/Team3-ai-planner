@@ -3,9 +3,11 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Drilldown from '../Sidebar/Drilldown';
 import AgentChat from '../Interrogate/AgentChat';
+import WorkspaceSkeleton from './WorkspaceSkeleton';
 
 export default function WorkspaceLayout({
   workspace,
+  isHistoryLoading,
   isGlobalChatOpen,
   setIsGlobalChatOpen,
   globalChatAgents,
@@ -51,7 +53,11 @@ export default function WorkspaceLayout({
           bottom: 0
         }}
       >
-        <Outlet />
+        {isHistoryLoading ? (
+          <WorkspaceSkeleton pathname={location.pathname} />
+        ) : (
+          <Outlet />
+        )}
       </div>
 
       {/* SIDEBAR OVERLAY DRAWER (HIGH-PERFORMANCE GPU ANIMATION) */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileUp, Link2, CheckSquare, Square, ChevronRight, Info, Lock, Clock, ShieldCheck, Send, User } from 'lucide-react';
+import { FileUp, Link2, CheckSquare, Square, ChevronRight, Info, Lock, Clock, ShieldCheck, Send, User, Sparkles } from 'lucide-react';
 
 const REQUIRED_FIELDS = [
   { id: 'businessType', label: 'Business Type', prompt: 'What type of business do you run? (e.g. Retailer, Tech Platform)' },
@@ -28,8 +28,9 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const chatBottomRef = useRef(null);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
-  const [setupStatus, setSetupStatus] = useState(null);
+
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,18 +125,21 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
 
   const handleChatSubmit = (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || isAiTyping) return;
 
     const currentField = missingFields[currentMissingIdx];
-    
-    setChatMessages(prev => [...prev, { sender: 'YOU', text: chatInput }]);
+    if (!currentField) return;
+
+    const userText = chatInput.trim();
+    setChatMessages(prev => [...prev, { sender: 'YOU', text: userText }]);
     
     setBusinessProfile(prev => ({
       ...prev,
-      [currentField.id]: chatInput
+      [currentField.id]: userText
     }));
     
     setChatInput('');
+    setIsAiTyping(true);
 
     // Move to next question or finish
     setTimeout(() => {
@@ -146,21 +150,15 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
       } else {
         setChatMessages(prev => [...prev, { sender: 'AI', text: 'Great! I have all the information needed to construct your workspace.' }]);
         setTimeout(() => {
-          setSetupStatus('loading');
-          setTimeout(() => {
-            onImportComplete(businessProfile);
-          }, 1000);
+          onImportComplete(businessProfile);
         }, 1500);
       }
-    }, 600);
+      setIsAiTyping(false);
+    }, 800);
   };
 
   const handleMergeApproved = () => {
-    const list = detectedEntities.filter(e => approvedEntities.has(e.id));
-    setSetupStatus('loading');
-    setTimeout(() => {
-      onImportComplete(businessProfile);
-    }, 1000);
+    onImportComplete(businessProfile);
   };
 
   const toggleApprovedEntity = (id) => {
@@ -172,21 +170,7 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
     });
   };
 
-  if (setupStatus === 'loading') {
-    return (
-      <div className="animate-fade-in light-mesh-bg" style={{
-        width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        <div className="breathing-logo" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '64px', height: '64px', borderRadius: '16px', background: 'var(--text-primary)'
-        }}>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: '24px' }}>L</span>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="animate-fade-in light-mesh-bg" style={{
@@ -408,8 +392,8 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
             <div className="flex flex-col h-full">
               <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)' }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Lattice Assistant</h2>
+                  <Sparkles size={16} className="text-txt-primary opacity-80 animate-pulse" />
+                  <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Strivo Assistant</h2>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Collecting remaining context for probability simulation.</p>
               </div>
@@ -427,6 +411,21 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
                     </div>
                   </div>
                 ))}
+                {isAiTyping && (
+                  <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }} className="animate-pulse">
+                    <div style={{
+                      background: 'var(--surface-panel)',
+                      color: 'var(--text-secondary)',
+                      padding: '12px 16px', borderRadius: '8px',
+                      border: '1px solid var(--border-light)',
+                      display: 'flex', items: 'center', gap: '6px'
+                    }}>
+                      <span className="w-1.5 h-1.5 bg-border-dark rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-border-dark rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-border-dark rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
                 <div ref={chatBottomRef} />
               </div>
 
@@ -436,17 +435,20 @@ export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
                     type="text"
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
-                    placeholder="Type your answer..."
+                    placeholder={isAiTyping ? "AI is processing..." : "Type your answer..."}
+                    disabled={isAiTyping}
                     autoFocus
                     style={{
                       flex: 1, height: '44px', padding: '0 16px', borderRadius: '8px',
-                      border: '1px solid var(--border-default)', fontSize: '14px', outline: 'none'
+                      border: '1px solid var(--border-default)', fontSize: '14px', outline: 'none',
+                      background: isAiTyping ? 'var(--surface-panel)' : 'var(--surface-card)',
+                      opacity: isAiTyping ? 0.75 : 1
                     }}
                   />
-                  <button type="submit" disabled={!chatInput.trim()} style={{
+                  <button type="submit" disabled={!chatInput.trim() || isAiTyping} style={{
                     width: '44px', height: '44px', background: 'var(--accent)', color: '#fff',
                     borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: 'none', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', opacity: chatInput.trim() ? 1 : 0.5
+                    border: 'none', cursor: (chatInput.trim() && !isAiTyping) ? 'pointer' : 'not-allowed', opacity: (chatInput.trim() && !isAiTyping) ? 1 : 0.5
                   }}>
                     <Send size={18} />
                   </button>

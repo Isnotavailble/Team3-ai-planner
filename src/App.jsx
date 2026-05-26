@@ -22,16 +22,24 @@ export default function App() {
   });
 
   const [activeHistoryId, setActiveHistoryId] = useState('current');
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   const [businessProfile, setBusinessProfile] = useState(
     mockHistories.find(h => h.id === 'current').profile
   );
 
   useEffect(() => {
+    setIsHistoryLoading(true);
+    const timer = setTimeout(() => {
+      setIsHistoryLoading(false);
+    }, 1000);
+
     const history = mockHistories.find(h => h.id === activeHistoryId);
     if (history) {
       setBusinessProfile(history.profile);
     }
+
+    return () => clearTimeout(timer);
   }, [activeHistoryId]);
 
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
@@ -68,6 +76,10 @@ export default function App() {
 
   const handleOnboardingComplete = (profile) => {
     setBusinessProfile(profile);
+    setIsHistoryLoading(true);
+    setTimeout(() => {
+      setIsHistoryLoading(false);
+    }, 4000);
     navigate('/workspace');
   };
 
@@ -101,6 +113,7 @@ export default function App() {
         <Route path="/workspace" element={
           <WorkspaceLayout 
             workspace={workspace} 
+            isHistoryLoading={isHistoryLoading}
             isGlobalChatOpen={isGlobalChatOpen}
             setIsGlobalChatOpen={setIsGlobalChatOpen}
             globalChatAgents={globalChatAgents}
