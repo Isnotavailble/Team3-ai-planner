@@ -95,6 +95,16 @@ function CustomTooltip({ active, payload, label }) {
 
   const isProjected = payload[0]?.payload?.projected;
 
+  // Deduplicate payload by name to fix the overlapping point bug (6 labels instead of 3)
+  const uniquePayload = [];
+  const seen = new Set();
+  payload.forEach((entry) => {
+    if (!seen.has(entry.name)) {
+      seen.add(entry.name);
+      uniquePayload.push(entry);
+    }
+  });
+
   return (
     <div
       className="rounded-lg border px-3 py-2 text-xs shadow-lg"
@@ -115,7 +125,7 @@ function CustomTooltip({ active, payload, label }) {
           </span>
         )}
       </p>
-      {payload.map((entry) => (
+      {uniquePayload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-1.5">
           <span
             className="inline-block h-2 w-2 rounded-full"

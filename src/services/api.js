@@ -73,7 +73,36 @@ class LatticeApiService {
       progressLogs.push(`Round ${round}/${totalRounds}: Swarm agents reacting to inputs...`);
     }
 
-    const rawResult = this.simResults['main'];
+    // Clone the raw result so we don't mutate the global mock data
+    const rawResult = JSON.parse(JSON.stringify(this.simResults['main']));
+    
+    // agentRatios.competitors ranges from 10 to 100.
+    // We map 10->index 0 (Aggressive Capture) and 100->index 6 (Total Retreat)
+    const compRatio = agentRatios && agentRatios.competitors ? agentRatios.competitors : 50;
+    
+    // Clamp to [0, 6] bounds
+    const peakIndex = Math.max(0, Math.min(6, ((compRatio - 10) / 90) * 6));
+    
+    // Generate bell curve distribution (Normal Distribution)
+    const spread = 1.2;
+    let sum = 0;
+    const weights = rawResult.scenarios.map((_, i) => {
+      const w = Math.exp(-Math.pow(i - peakIndex, 2) / (2 * spread * spread));
+      sum += w;
+      return w;
+    });
+
+    // Normalize probabilities to ensure they sum exactly to 100%
+    let totalProb = 0;
+    rawResult.scenarios.forEach((sc, i) => {
+      if (i === rawResult.scenarios.length - 1) {
+        sc.prob = Math.max(0, 100 - totalProb); // Final element gets remainder
+      } else {
+        sc.prob = Math.round((weights[i] / sum) * 100);
+        totalProb += sc.prob;
+      }
+    });
+
     return mapToSimulationDTO(rawResult);
   }
 

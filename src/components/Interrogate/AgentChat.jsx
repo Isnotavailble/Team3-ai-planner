@@ -97,14 +97,8 @@ export default function AgentChat({
       }}>
         <div>
           <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Agent Interrogation Room
+            AI Simulation Assistant
           </h2>
-          <span
-            onClick={onBackToReport}
-            style={{ fontSize: '11px', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
-          >
-            &larr; Back
-          </span>
         </div>
         <button
           onClick={onClose}

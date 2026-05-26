@@ -117,8 +117,13 @@ export const RAW_SIM_RESULTS = {
     verdict: 'Suggested Decision: Partner with Mandalay Wholesalers to offer a credit limit to shops. Without credit, you will lose 40% of shops to Competitor Platform A.',
     confidence: 0.85,
     scenarios: [
-      { title: 'Offer Credit (Recommended)', prob: 85, desc: 'Partnering with wholesalers to offer credit will retain your shops and win shops from Competitor Platform A.', strong: true },
-      { title: 'Do Nothing', prob: 15, desc: 'Shops will slowly migrate to Competitor Platform A because they need credit.', strong: false }
+      { title: 'Aggressive Market Capture', prob: 0, desc: 'Heavy investment leads to massive market share capture.', strong: true },
+      { title: 'Targeted Segment Growth', prob: 0, desc: 'Solid growth in specific key verticals.', strong: true },
+      { title: 'Status Quo', prob: 0, desc: 'Market remains stable with no major changes.', strong: false },
+      { title: 'Slight Contraction', prob: 0, desc: 'Minor loss of accounts due to pricing pressure.', strong: false },
+      { title: 'Price War Attrition', prob: 0, desc: 'Heavy discounting leads to margin squeeze.', strong: false },
+      { title: 'Competitor Monopolization', prob: 0, desc: 'Major loss of market share to aggressive competitors.', strong: false },
+      { title: 'Total Market Retreat', prob: 0, desc: 'Critical loss of accounts forcing market exit.', strong: false }
     ],
     dynamics: [
       'Shops need credit to buy inventory.',

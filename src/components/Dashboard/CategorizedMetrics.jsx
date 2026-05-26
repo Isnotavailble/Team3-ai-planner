@@ -26,12 +26,12 @@ export default function CategorizedMetrics({ profile }) {
   // 1: Financial Health (Bar Chart)
   const financialData = useMemo(() => {
     return [
-      { name: 'Month 1', Revenue: monthlyRevenue, Target: monthlyRevenue * 1.05 },
-      { name: 'Month 2', Revenue: monthlyRevenue * 1.02, Target: monthlyRevenue * 1.1 },
-      { name: 'Month 3', Revenue: monthlyRevenue * 1.08, Target: monthlyRevenue * 1.15 },
-      { name: 'Month 4', Revenue: monthlyRevenue * 1.12, Target: monthlyRevenue * 1.2 },
-      { name: 'Month 5', Revenue: monthlyRevenue * 1.20, Target: monthlyRevenue * 1.25 },
-      { name: 'Month 6', Revenue: monthlyRevenue * 1.25, Target: monthlyRevenue * 1.3 },
+      { name: 'Month 1', Revenue: Math.round(monthlyRevenue), Target: Math.round(monthlyRevenue * 1.05) },
+      { name: 'Month 2', Revenue: Math.round(monthlyRevenue * 1.02), Target: Math.round(monthlyRevenue * 1.1) },
+      { name: 'Month 3', Revenue: Math.round(monthlyRevenue * 1.08), Target: Math.round(monthlyRevenue * 1.15) },
+      { name: 'Month 4', Revenue: Math.round(monthlyRevenue * 1.12), Target: Math.round(monthlyRevenue * 1.2) },
+      { name: 'Month 5', Revenue: Math.round(monthlyRevenue * 1.20), Target: Math.round(monthlyRevenue * 1.25) },
+      { name: 'Month 6', Revenue: Math.round(monthlyRevenue * 1.25), Target: Math.round(monthlyRevenue * 1.3) },
     ];
   }, [monthlyRevenue]);
 
@@ -48,9 +48,9 @@ export default function CategorizedMetrics({ profile }) {
     }
 
     return [
-      { name: 'Marketing', Value: (budget * (marketing / 100)) },
-      { name: 'Operations', Value: (budget * (ops / 100)) },
-      { name: 'Software', Value: (budget * (software / 100)) },
+      { name: 'Marketing', Value: Math.round(budget * (marketing / 100)) },
+      { name: 'Operations', Value: Math.round(budget * (ops / 100)) },
+      { name: 'Software', Value: Math.round(budget * (software / 100)) },
     ];
   }, [budget, profile?.businessChallenges]);
 
