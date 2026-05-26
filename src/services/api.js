@@ -109,18 +109,23 @@ class LatticeApiService {
   async sendChatMessage(agentId, messages) {
     await new Promise(resolve => setTimeout(resolve, 800));
     
+    let lastMessageText = '';
+    if (messages && messages.length > 0) {
+      lastMessageText = messages[messages.length - 1].text.toLowerCase();
+    }
+
     let responseText = '';
 
-    if (agentId === 'ag-zc-policy') {
+    if (lastMessageText.includes('policy') || lastMessageText.includes('competitor') || lastMessageText.includes('term')) {
       responseText = `The Competitor Credit Policy is built to underwrite retail grocery accounts directly. If the primary platform matches credit terms, the system is designed to trigger automated extensions up to 30 days for high-volume shops to protect market share.`;
-    } else if (agentId === 'ag-latha') {
-      responseText = `Honestly, we prefer the platform's simple catalog, but running a store requires credit. If you roll out the supplier credit limits, we will shift all our grocery ordering back to your app.`;
+    } else if (lastMessageText.includes('latha') || lastMessageText.includes('owner') || lastMessageText.includes('shop') || lastMessageText.includes('retailer')) {
+      responseText = `Honestly, shop owners like Latha prefer the platform's simple catalog, but running a store requires credit. If you roll out the supplier credit limits, they will shift all their grocery ordering back to your app.`;
     } else {
-      responseText = `Local shop owners show high interest in catalog credit. Cash discounts help but do not solve daily cashflow gaps.`;
+      responseText = `Local shop owners show high interest in catalog credit. Cash discounts help but do not solve daily cashflow gaps. Partnering with Mandalay Wholesalers for credit limits is highly recommended.`;
     }
 
     return {
-      sender: agentId.toUpperCase().replace('AG-', '').replace('-', ' '),
+      sender: agentId.toUpperCase().replace('AG-', '').replace(/-/g, ' '),
       text: responseText,
       timestamp: new Date().toISOString()
     };

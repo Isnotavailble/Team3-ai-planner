@@ -7,43 +7,20 @@ export default function AgentChat({
   onClose,
   onBackToReport
 }) {
-  const [activeAgentIdx, setActiveAgentIdx] = useState(0);
-  const activeAgent = agents[activeAgentIdx] || null;
-
-  // Chat histories stored per agent ID
-  const [chatHistories, setChatHistories] = useState({});
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   
   const chatBottomRef = useRef(null);
 
-  // Initialize greeting messages when agents load
-  useEffect(() => {
-    if (!agents.length) return;
-    
-    const initialHistories = {};
-    agents.forEach(a => {
-      initialHistories[a.id] = [
-        {
-          id: 'greet',
-          sender: a.name,
-          role: a.role,
-          text: `Hi, I was simulated as part of the analysis. Ask me anything about my decisions or motivations during the simulation.`,
-          timestamp: new Date().toISOString()
-        }
-      ];
-    });
-    setChatHistories(initialHistories);
-  }, [agents]);
-
   // Scroll to bottom whenever messages load
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistories, activeAgentIdx, isTyping]);
+  }, [messages, isTyping]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() || !activeAgent) return;
+    if (!inputText.trim()) return;
 
     const userMessage = {
       id: `msg-${Date.now()}`,
@@ -52,19 +29,13 @@ export default function AgentChat({
       timestamp: new Date().toISOString()
     };
 
-    const agentId = activeAgent.id;
-    const currentHistory = chatHistories[agentId] || [];
-    const updatedHistory = [...currentHistory, userMessage];
-
-    setChatHistories(prev => ({
-      ...prev,
-      [agentId]: updatedHistory
-    }));
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInputText('');
     setIsTyping(true);
 
     try {
-      const response = await api.sendChatMessage(agentId, updatedHistory);
+      const response = await api.sendChatMessage('ai-simulation-assistant', updatedMessages);
       const agentResponse = {
         id: `reply-${Date.now()}`,
         sender: response.sender,
@@ -72,10 +43,7 @@ export default function AgentChat({
         timestamp: response.timestamp
       };
 
-      setChatHistories(prev => ({
-        ...prev,
-        [agentId]: [...updatedHistory, agentResponse]
-      }));
+      setMessages([...updatedMessages, agentResponse]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -83,13 +51,11 @@ export default function AgentChat({
     }
   };
 
-  const currentHistory = activeAgent ? (chatHistories[activeAgent.id] || []) : [];
-
   return (
     <div style={{
       width: '380px', height: '100%', borderLeft: '1px solid var(--border-default)',
       background: 'var(--surface-card)', display: 'flex', flexDirection: 'column',
-      boxShadow: '-4px 0 16px rgba(0,0,0,0.02)', animation: 'fadeIn 0.2s ease-out'
+      boxShadow: '-4px 0 16px rgba(0,0,0,0.02)'
     }}>
       {/* Header */}
       <div className="flex justify-between items-center" style={{
@@ -111,30 +77,9 @@ export default function AgentChat({
         </button>
       </div>
 
-      {/* Agents Tabs */}
-      <div className="flex" style={{
-        background: 'var(--surface-panel)', borderBottom: '1px solid var(--border-light)',
-        overflowX: 'auto', padding: '0 8px'
-      }}>
-        {agents.map((a, idx) => (
-          <div
-            key={a.id}
-            onClick={() => setActiveAgentIdx(idx)}
-            style={{
-              padding: '10px 14px', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
-              whiteSpace: 'nowrap', borderBottom: '2px solid transparent',
-              color: activeAgentIdx === idx ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              borderBottomColor: activeAgentIdx === idx ? 'var(--text-primary)' : 'transparent'
-            }}
-          >
-            {a.name}
-          </div>
-        ))}
-      </div>
-
       {/* Chat Messages Log */}
       <div className="scrollable" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {currentHistory.map(msg => {
+        {messages.map(msg => {
           const isUser = msg.sender === 'YOU';
           return (
             <div
@@ -164,7 +109,7 @@ export default function AgentChat({
           }}>
             <div className="flex gap-1 items-center" style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
               <User size={12} />
-              <span>Agent typing</span>
+              <span>Assistant typing</span>
               <span className="dot"></span>
               <span className="dot"></span>
               <span className="dot"></span>
@@ -181,7 +126,7 @@ export default function AgentChat({
       }}>
         <input
           type="text"
-          placeholder={`Ask ${activeAgent?.name || 'agent'}...`}
+          placeholder="Ask AI Simulation Assistant..."
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           disabled={isTyping}
