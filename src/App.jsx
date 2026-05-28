@@ -2,13 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import api from './services/api';
 import Onboarding from './components/Onboarding/Onboarding';
-import AIReportPage from './components/AIReportPage/AIReportPage';
 import Layout from './components/Layout/Layout';
 import WorkspaceLayout from './components/Workspace/WorkspaceLayout';
 import DashboardPage from './components/Dashboard/DashboardPage';
+import ReportsView from './components/Dashboard/ReportsView';
+import GoalsView from './components/Dashboard/GoalsView';
+import AnalyticsView from './components/Dashboard/AnalyticsView';
+import ProfileView from './components/Dashboard/ProfileView';
 import { mockHistories } from './data/mockHistories';
 
 export default function App() {
+  const [language, setLanguage] = useState('mm'); // 'mm' (default) | 'en'
+
   const [baseWorkspace, setBaseWorkspace] = useState({
     entities: [],
     edges: [],
@@ -79,7 +84,15 @@ export default function App() {
     setIsHistoryLoading(true);
     setTimeout(() => {
       setIsHistoryLoading(false);
-    }, 4000);
+    }, 1000);
+    navigate('/workspace');
+  };
+
+  const handleSkipToSandbox = () => {
+    setIsHistoryLoading(true);
+    setTimeout(() => {
+      setIsHistoryLoading(false);
+    }, 1000);
     navigate('/workspace');
   };
 
@@ -101,12 +114,14 @@ export default function App() {
           setIsGlobalChatOpen={setIsGlobalChatOpen} 
           activeHistoryId={activeHistoryId} 
           setActiveHistoryId={setActiveHistoryId} 
+          language={language}
         />
       }>
         <Route path="/" element={
           <Onboarding 
             onImportComplete={handleOnboardingComplete} 
-            onSkipToSandbox={() => navigate('/workspace')} 
+            onSkipToSandbox={handleSkipToSandbox} 
+            language={language}
           />
         } />
         
@@ -121,6 +136,7 @@ export default function App() {
             selectedNodeId={selectedNodeId}
             setSelectedNodeId={setSelectedNodeId}
             handleSelectNode={handleSelectNode}
+            language={language}
           />
         }>
           {/* Main workspace index: Dashboard Page */}
@@ -130,6 +146,7 @@ export default function App() {
               businessProfile={businessProfile} 
               selectedNodeId={selectedNodeId}
               handleSelectNode={handleSelectNode}
+              language={language}
             />
           } />
           
@@ -140,12 +157,48 @@ export default function App() {
               businessProfile={businessProfile} 
               selectedNodeId={selectedNodeId}
               handleSelectNode={handleSelectNode}
+              language={language}
             />
           } />
           
-          {/* Workspace predictive simulation page */}
-          <Route path="predict" element={
-            <AIReportPage onStartInterrogation={handleStartInterrogation} />
+          {/* Financial Reports sub-page */}
+          <Route path="reports" element={
+            <ReportsView 
+              workspace={workspace} 
+              businessProfile={businessProfile} 
+              language={language}
+            />
+          } />
+
+          {/* Goals & Budget sub-page */}
+          <Route path="goals" element={
+            <GoalsView 
+              workspace={workspace} 
+              businessProfile={businessProfile} 
+              setBusinessProfile={setBusinessProfile}
+              language={language}
+            />
+          } />
+
+          {/* Analytics & Prediction simulation sub-page */}
+          <Route path="analytics" element={
+            <AnalyticsView 
+              workspace={workspace}
+              businessProfile={businessProfile} 
+              onStartInterrogation={handleStartInterrogation}
+              language={language}
+            />
+          } />
+
+          {/* Profile settings sub-page */}
+          <Route path="profile" element={
+            <ProfileView 
+              workspace={workspace} 
+              businessProfile={businessProfile} 
+              setBusinessProfile={setBusinessProfile}
+              language={language}
+              setLanguage={setLanguage}
+            />
           } />
         </Route>
       </Route>

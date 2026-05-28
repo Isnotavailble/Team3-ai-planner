@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, User, Plus, Sparkles, ChevronDown } from 'lucide-react';
 import { mockHistories } from '../../data/mockHistories';
 
-export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHistoryId, setActiveHistoryId }) {
+export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHistoryId, setActiveHistoryId, language = 'mm' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isOnboarding = location.pathname === '/';
@@ -53,7 +53,9 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="p-3 border-b border-border-light bg-surface-panel/50">
-                        <span className="text-xs font-semibold text-txt-secondary uppercase tracking-wider">Session History</span>
+                        <span className="text-xs font-semibold text-txt-secondary uppercase tracking-wider">
+                          {language === 'mm' ? "စက်ရှင် မှတ်တမ်း" : "Session History"}
+                        </span>
                       </div>
                       <div className="p-2 space-y-1">
                         {mockHistories.map(h => (
@@ -80,7 +82,7 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
             <button className="flex items-center gap-1.5 bg-transparent border-none cursor-pointer text-xs font-medium"
               style={{ color: 'inherit' }}
             >
-              <HelpCircle size={16} /> Help & Guides
+              <HelpCircle size={16} /> {language === 'mm' ? "လမ်းညွှန်ချက်များ" : "Help & Guides"}
             </button>
           </div>
         ) : (
@@ -96,7 +98,7 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
                 color: isGlobalChatOpen ? 'var(--text-primary)' : 'var(--text-secondary)'
               }}
             >
-              <Sparkles size={12} className={isGlobalChatOpen ? 'text-txt-primary' : ''} /> Ask AI
+              <Sparkles size={12} className={isGlobalChatOpen ? 'text-txt-primary' : ''} /> {language === 'mm' ? "AI မေးမြန်းရန်" : "Ask AI"}
             </button>
 
             <button
@@ -107,7 +109,7 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
                 height: '32px', padding: '0 12px', color: 'var(--text-secondary)'
               }}
             >
-              <Plus size={12} /> New Session
+              <Plus size={12} /> {language === 'mm' ? "အစမှ ပြန်စရန်" : "New Session"}
             </button>
 
             <div className="w-px h-4 mx-1" style={{ background: 'var(--border-default)' }} />

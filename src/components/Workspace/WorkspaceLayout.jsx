@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Home, BarChart2, Target, TrendingUp, Settings } from 'lucide-react';
 import Drilldown from '../Sidebar/Drilldown';
 import AgentChat from '../Interrogate/AgentChat';
 import WorkspaceSkeleton from './WorkspaceSkeleton';
+import { translations } from '../../data/translations';
 
 export default function WorkspaceLayout({
   workspace,
@@ -14,10 +16,12 @@ export default function WorkspaceLayout({
   setGlobalChatAgents,
   selectedNodeId,
   setSelectedNodeId,
-  handleSelectNode
+  handleSelectNode,
+  language = 'mm'
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const t = translations[language];
 
   // Determine drawer state from route path OR global state
   let drawerType = null;
@@ -39,18 +43,95 @@ export default function WorkspaceLayout({
 
   const selectedEntity = workspace.entities.find(e => e.id === selectedNodeId);
 
+  // Determine active tab
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path.endsWith('/reports')) return 'reports';
+    if (path.endsWith('/goals')) return 'goals';
+    if (path.endsWith('/analytics')) return 'analytics';
+    if (path.endsWith('/profile')) return 'profile';
+    return 'home';
+  };
+
+  const activeTab = getActiveTab();
+
+  const navItems = [
+    { id: 'home', path: '/workspace', label: t.navHome, labelEn: 'Home Briefing', icon: Home },
+    { id: 'reports', path: '/workspace/reports', label: t.navReports, labelEn: 'Financial Reports', icon: BarChart2 },
+    { id: 'goals', path: '/workspace/goals', label: t.navGoals, labelEn: 'Goals & Budget', icon: Target },
+    { id: 'analytics', path: '/workspace/analytics', label: t.navAnalytics, labelEn: 'Analytics & Projections', icon: TrendingUp },
+    { id: 'profile', path: '/workspace/profile', label: t.navProfile, labelEn: 'Profile & Settings', icon: Settings }
+  ];
+
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      {/* MAIN CONTENT OUTLET */}
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'flex' }}>
+      
+      {/* LEFT NAVIGATION SIDEBAR */}
+      <aside 
+        style={{
+          width: '260px',
+          background: 'var(--bg-elevated)',
+          borderRight: '1px solid var(--border-default)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 15,
+          flexShrink: 0
+        }}
+      >
+        {/* Sidebar Header / Logo area */}
+        <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+          <div className="mono text-[10px] uppercase tracking-wider text-txt-tertiary mb-1" style={{ color: 'var(--text-secondary)' }}>
+            Lattice MSME
+          </div>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {language === 'mm' ? "လုပ်ငန်း စီမံခန့်ခွဲမှု" : "Business Navigator"}
+          </h2>
+        </div>
+
+        {/* Sidebar Nav Links */}
+        <nav style={{ padding: '16px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {navItems.map(item => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all border-none cursor-pointer ${isActive ? 'bg-surface-active text-txt-primary font-semibold' : 'hover:bg-surface-hover text-txt-secondary'}`}
+                style={{
+                  background: isActive ? 'var(--accent-soft)' : 'transparent',
+                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)'
+                }}
+              >
+                <Icon size={18} style={{ color: isActive ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                  <span style={{ fontSize: '13px', fontWeight: isActive ? '600' : '500' }}>{item.label}</span>
+                  <span className="mono" style={{ fontSize: '9px', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{item.labelEn}</span>
+                </div>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer info */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.03)' }}>
+          <div className="mono" style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>
+            SYSTEM ONLINE &middot; V1.0.0
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT OUTLET (OFFSET BY SIDEBAR WIDTH) */}
       <div 
         className="overflow-y-auto overflow-x-hidden" 
         style={{ 
           scrollBehavior: 'smooth',
           position: 'absolute',
-          left: 0,
+          left: '260px',
           top: 0,
           right: 0,
-          bottom: 0
+          bottom: 0,
+          background: 'var(--bg-base)'
         }}
       >
         {isHistoryLoading ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, User } from 'lucide-react';
+import { X, Send, User, Mic } from 'lucide-react';
 import api from '../../services/api';
 
 export default function AgentChat({
@@ -10,17 +10,18 @@ export default function AgentChat({
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
   
   const chatBottomRef = useRef(null);
 
   // Scroll to bottom whenever messages load
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isTyping, isDictating]);
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+    if (e) e.preventDefault();
+    if (!inputText.trim() || isDictating) return;
 
     const userMessage = {
       id: `msg-${Date.now()}`,
@@ -49,6 +50,25 @@ export default function AgentChat({
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const startVoiceDictation = () => {
+    if (isDictating || isTyping) return;
+    setIsDictating(true);
+    setInputText("Listening...");
+    
+    const mockDictations = [
+      "How will the Competitor Price Cut affect our Net Profit next month?",
+      "Can you analyze our customer retention risk under credit inflation?",
+      "What is our estimated sales drop if supplier costs increase by 15%?",
+      "Should we match rival shop discounts to increase market share?"
+    ];
+
+    setTimeout(() => {
+      const randomText = mockDictations[Math.floor(Math.random() * mockDictations.length)];
+      setInputText(randomText);
+      setIsDictating(false);
+    }, 1800);
   };
 
   return (
@@ -120,31 +140,52 @@ export default function AgentChat({
       </div>
 
       {/* Message Input Box */}
-      <form onSubmit={handleSendMessage} className="flex gap-2" style={{
+      <form onSubmit={handleSendMessage} className="flex gap-2 items-center" style={{
         padding: '16px 20px', borderTop: '1px solid var(--border-light)',
         background: 'var(--surface-card)'
       }}>
         <input
           type="text"
-          placeholder="Ask AI Simulation Assistant..."
+          placeholder={isDictating ? "Speak now..." : "Ask AI Simulation Assistant..."}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          disabled={isTyping}
+          disabled={isTyping || isDictating}
           style={{
             flex: 1, height: '36px', border: '1px solid var(--border-default)',
             borderRadius: '6px', padding: '0 12px', fontSize: '13px', outline: 'none',
-            background: 'var(--surface-page)'
+            background: (isTyping || isDictating) ? 'var(--surface-panel)' : 'var(--surface-page)'
           }}
         />
+
+        {/* Voice Input Button */}
+        <button
+          type="button"
+          onClick={startVoiceDictation}
+          disabled={isTyping || isDictating}
+          className={isDictating ? "animate-pulse" : ""}
+          style={{
+            width: '36px', height: '36px', 
+            background: isDictating ? 'var(--accent)' : 'var(--surface-active)',
+            color: isDictating ? '#fff' : 'var(--text-secondary)', 
+            border: '1px solid var(--border-light)', 
+            borderRadius: '6px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: (isTyping || isDictating) ? 'not-allowed' : 'pointer'
+          }}
+          title="Dictate message"
+        >
+          <Mic size={15} />
+        </button>
+
         <button
           type="submit"
-          disabled={!inputText.trim() || isTyping}
+          disabled={!inputText.trim() || isTyping || isDictating || inputText === "Listening..."}
           style={{
             width: '36px', height: '36px', background: 'var(--text-primary)',
             color: 'var(--text-inverse)', border: 'none', borderRadius: '6px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: inputText.trim() && !isTyping ? 'pointer' : 'not-allowed',
-            opacity: inputText.trim() && !isTyping ? 1 : 0.5
+            cursor: (inputText.trim() && !isTyping && !isDictating && inputText !== "Listening...") ? 'pointer' : 'not-allowed',
+            opacity: (inputText.trim() && !isTyping && !isDictating && inputText !== "Listening...") ? 1 : 0.5
           }}
         >
           <Send size={14} />

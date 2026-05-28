@@ -1,58 +1,126 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Play, Cpu, Crosshair, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
 import SimulationSkeleton from './SimulationSkeleton';
 
-export default function AIReportPage({ onStartInterrogation }) {
+export default function AIReportPage({ onStartInterrogation, businessProfile = {} }) {
   const navigate = useNavigate();
   const [stage, setStage] = useState('setup'); // 'setup' | 'running' | 'results'
   const [logs, setLogs] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
   const [ratios, setRatios] = useState({
     competitors: 50,
     customers: 70,
     distributors: 40
   });
   const [verdictData, setVerdictData] = useState(null);
+  const [simulationData, setSimulationData] = useState([]);
+  
+  // Toggles for the 5 projection lines
+  const [visibleLines, setVisibleLines] = useState({
+    profit: true,
+    marketShare: true,
+    revenue: false,
+    expenses: false,
+    customers: false
+  });
+
+  const hasRivals = businessProfile?.rivals && businessProfile.rivals.length > 0;
 
   const runSimulation = async () => {
     setStage('running');
     setLogs([]);
     setProgress(0);
+    setError(null);
 
     const totalRounds = 8;
     const mockLogs = [
       'Round 1: Initializing merchant swarm agents (40 agents)...',
       'Round 2: Competitors assessing retail order volumes...',
-      'Round 3: Shopkeepers requesting digital credit limit terms...',
-      'Round 4: Competitor launching matching credit programs...',
-      'Round 5: Coalition forming: 3 competitor partners matching term limits...',
+      'Round 3: Shopkeepers requesting credit terms...',
+      'Round 4: Competitor launching matching pricing campaigns...',
+      'Round 5: Coalition forming: 3 competitor partners matching inventory...',
       'Round 6: Retailer agents showing high migration to credit programs...',
-      'Round 7: Wholesale suppliers adjusting credit lines...',
-      'Round 8: Completing scenario analysis and compiling B2B verdict report...'
+      'Round 7: Wholesale suppliers adjusting operational costs...',
+      'Round 8: Completing scenario analysis and compiling profit verdict report...'
     ];
 
     for (let i = 0; i < totalRounds; i++) {
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await new Promise(resolve => setTimeout(resolve, 300));
       setLogs(prev => [...prev, mockLogs[i]]);
       setProgress(((i + 1) / totalRounds) * 100);
     }
 
-    const result = await api.runSimulation('main', ratios);
-    setVerdictData(result);
-    setStage('results');
-  };
+    try {
+      const result = await api.runSimulation('main', ratios);
+      
+      // Calculate profit and market share projections mathematically
+      const monthlySales = businessProfile?.sales?.monthly || 
+                           (businessProfile?.sales?.daily ? businessProfile.sales.daily * 30 : 0) || 
+                           (businessProfile?.sales?.weekly ? (businessProfile.sales.weekly / 7) * 30 : 0) || 
+                           (businessProfile?.sales?.yearly ? businessProfile.sales.yearly / 12 : 0) || 
+                           12000;
+      const monthlyExpenses = businessProfile?.expenses || 8000;
 
-  const probabilityData = useMemo(() => {
-    if (!verdictData || !verdictData.scenarios) return [];
-    return verdictData.scenarios.map(sc => ({
-      name: sc.title.split(' (')[0],
-      Probability: sc.prob,
-      strong: sc.strong
-    }));
-  }, [verdictData]);
+      const compRatio = hasRivals ? (ratios.competitors / 100) : 0.7; // default to 70% baseline risk if no rivals specified
+      const custRatio = ratios.customers / 100;
+      const distRatio = ratios.distributors / 100;
+
+      const points = [];
+      const scenario = businessProfile?.targetScenario || 'Competitor Price Cut';
+
+      for (let step = 1; step <= 6; step++) {
+        let revenue = monthlySales;
+        let expenses = monthlyExpenses;
+        let marketShare = 65;
+        let customers = 180;
+
+        if (scenario.includes('Price') || scenario.includes('Cut')) {
+          marketShare -= step * (compRatio * 5);
+          revenue -= step * (compRatio * (monthlySales * 0.04));
+          customers -= step * (compRatio * 10);
+        } else if (scenario.includes('Credit') || scenario.includes('Demand')) {
+          revenue += step * (custRatio * (monthlySales * 0.02));
+          expenses += step * (custRatio * (monthlyExpenses * 0.05));
+          marketShare += step * (custRatio * 1.5);
+        } else if (scenario.includes('Chain') || scenario.includes('Inflation') || scenario.includes('Shortage')) {
+          expenses += step * ((1 - distRatio) * (monthlyExpenses * 0.08));
+          marketShare -= step * 0.8;
+        } else {
+          revenue += step * (custRatio * (monthlySales * 0.015)) - step * (compRatio * (monthlySales * 0.01));
+        }
+
+        const profit = revenue - expenses;
+
+        points.push({
+          name: `Month ${step}`,
+          profit: Math.round(profit),
+          marketShare: Math.round(Math.max(0, Math.min(100, marketShare))),
+          revenue: Math.round(revenue),
+          expenses: Math.round(expenses),
+          customers: Math.round(Math.max(0, customers))
+        });
+      }
+
+      setSimulationData(points);
+      
+      // Customize verdict based on user scenario
+      const customVerdict = {
+        ...result,
+        verdict: `Based on your average sales of $${monthlySales.toLocaleString()} and outcomes of $${monthlyExpenses.toLocaleString()}, simulating "${scenario}" reveals a ${result.confidence > 0.8 ? 'strong' : 'moderate'} financial trend. Profit projection will decrease to $${points[5].profit.toLocaleString()} by Month 6, leading to ${businessProfile.expectedResult || 'Less Profit'} matching your expectations.`
+      };
+      
+      setVerdictData(customVerdict);
+      setStage('results');
+    } catch (err) {
+      console.error(err);
+      setError("Failed to run the predictive simulation. Please verify your connection or parameters and try again.");
+      setStage('setup');
+    }
+  };
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -78,6 +146,14 @@ export default function AIReportPage({ onStartInterrogation }) {
         </div>
       </div>
 
+      {/* Error Message Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
+          <span className="w-1.5 h-1.5 bg-red-600 rounded-full shrink-0 animate-pulse" />
+          {error}
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex flex-col lg:flex-row gap-6">
         
@@ -90,18 +166,26 @@ export default function AIReportPage({ onStartInterrogation }) {
             </h2>
             
             <div className="space-y-6">
-              <div>
-                <div className="flex justify-between text-sm font-medium mb-2">
-                  <span className="text-txt-secondary text-xs">Competitor Aggressiveness</span>
-                  <span className="text-txt-primary font-semibold">{ratios.competitors}%</span>
+              
+              {/* Competitor Aggressiveness (only show if rivals exist) */}
+              {hasRivals ? (
+                <div>
+                  <div className="flex justify-between text-sm font-medium mb-2">
+                    <span className="text-txt-secondary text-xs">Competitor Aggressiveness</span>
+                    <span className="text-txt-primary font-semibold">{ratios.competitors}%</span>
+                  </div>
+                  <input
+                    type="range" min="10" max="100" value={ratios.competitors}
+                    onChange={(e) => setRatios({ ...ratios, competitors: parseInt(e.target.value) })}
+                    className="w-full accent-txt-primary cursor-pointer"
+                    disabled={stage !== 'setup'}
+                  />
                 </div>
-                <input
-                  type="range" min="10" max="100" value={ratios.competitors}
-                  onChange={(e) => setRatios({ ...ratios, competitors: parseInt(e.target.value) })}
-                  className="w-full accent-txt-primary cursor-pointer"
-                  disabled={stage !== 'setup'}
-                />
-              </div>
+              ) : (
+                <div className="bg-surface-panel/40 border border-border-light rounded-lg p-3 text-[11px] text-txt-secondary">
+                  <strong>No competitors defined</strong>. The simulation will run with a default baseline competitor risk of 70%.
+                </div>
+              )}
 
               <div>
                 <div className="flex justify-between text-sm font-medium mb-2">
@@ -139,7 +223,13 @@ export default function AIReportPage({ onStartInterrogation }) {
               </button>
             )}
 
-
+            {stage === 'running' && (
+              <div className="mt-8 space-y-4 animate-pulse">
+                <div className="text-xs font-semibold text-txt-secondary text-center">
+                  Swarm Intelligence calculating...
+                </div>
+              </div>
+            )}
             
             {stage === 'results' && (
               <button
@@ -151,7 +241,7 @@ export default function AIReportPage({ onStartInterrogation }) {
             )}
           </div>
 
-          {/* Logs Container (Premium style) */}
+          {/* Logs Container */}
           {(stage === 'running' || stage === 'results') && (
             <div className="bg-slate-900 rounded-xl p-5 shadow-lg border border-slate-800 flex flex-col">
               <div className="flex items-center justify-between mb-4">
@@ -176,7 +266,7 @@ export default function AIReportPage({ onStartInterrogation }) {
                 Configure parameters to run simulation
               </p>
               <p className="text-xs mt-2 max-w-sm text-center text-txt-tertiary px-4 leading-relaxed">
-                The AI will generate probabilistic scenarios and uncover hidden market dynamics.
+                The AI will generate probabilistic scenarios and uncover profit projections.
               </p>
             </div>
           )}
@@ -188,7 +278,7 @@ export default function AIReportPage({ onStartInterrogation }) {
           {stage === 'results' && verdictData && (
             <div className="space-y-6 animate-fade-in">
               
-              {/* Verdict Summary (Compact Layout & Top-Right Button) */}
+              {/* Verdict Summary */}
               <div className="bg-surface-card p-5 rounded-xl border border-border-light shadow-sm relative transition-all hover:shadow-md">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="flex gap-3 flex-1">
@@ -205,7 +295,6 @@ export default function AIReportPage({ onStartInterrogation }) {
                     </div>
                   </div>
                   
-                  {/* RESTORED: Consult Agents Button */}
                   <button
                     onClick={() => onStartInterrogation(verdictData.criticalAgents)}
                     className="shrink-0 self-start sm:self-auto bg-txt-primary hover:bg-txt-primary/95 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer border-none flex items-center gap-1.5 duration-200"
@@ -216,74 +305,112 @@ export default function AIReportPage({ onStartInterrogation }) {
                 </div>
               </div>
 
-              {/* Charts & Details Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Probability Graph (Area Curve Layout) */}
-                <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm flex flex-col lg:col-span-2">
+              {/* Multi-Line Projection Chart */}
+              <div className="grid grid-cols-1 gap-6">
+                <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm flex flex-col">
                   <div className="flex items-center gap-2 mb-6">
                     <Crosshair size={18} className="text-txt-primary opacity-80" />
-                    <h3 className="text-sm font-semibold text-txt-primary">Scenario Probabilities Curve</h3>
+                    <h3 className="text-sm font-semibold text-txt-primary">Market Gain & Profit Projections</h3>
                   </div>
                   
+                  {/* Projection Chart Container */}
                   <div className="w-full h-[320px] min-h-[320px] mt-2">
                     <ResponsiveContainer width="100%" height={320}>
-                      <AreaChart data={probabilityData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                        <defs>
-                          <linearGradient id="colorProb" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
+                      <LineChart data={simulationData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 500 }} axisLine={false} tickLine={false} tickMargin={10} />
-                        <YAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} tickMargin={10} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
                         <RechartsTooltip 
-                          cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '4 4' }} 
-                          formatter={(value) => `${value}%`} 
                           contentStyle={{ 
                             borderRadius: '8px', 
                             fontSize: '12px', 
                             backgroundColor: 'var(--surface-card)', 
                             border: '1px solid var(--border-default)', 
-                            color: 'var(--text-primary)', 
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)' 
+                            color: 'var(--text-primary)' 
                           }} 
                         />
-                        <Area 
-                          type="monotone" 
-                          dataKey="Probability" 
-                          stroke="var(--accent)" 
-                          strokeWidth={3} 
-                          fillOpacity={1} 
-                          fill="url(#colorProb)" 
-                          activeDot={{ r: 6, fill: 'var(--accent)', stroke: 'var(--surface-card)', strokeWidth: 2 }}
-                        />
-                      </AreaChart>
+                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                        
+                        {visibleLines.profit && <Line yAxisId="left" type="monotone" dataKey="profit" stroke="#10b981" name="Net Profit ($)" strokeWidth={2.5} dot={{ r: 4 }} />}
+                        {visibleLines.marketShare && <Line yAxisId="right" type="monotone" dataKey="marketShare" stroke="#3b82f6" name="Market Share (%)" strokeWidth={2.5} dot={{ r: 4 }} />}
+                        {visibleLines.revenue && <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#0284c7" name="Total Revenue ($)" strokeWidth={1.5} dot={{ r: 3 }} />}
+                        {visibleLines.expenses && <Line yAxisId="left" type="monotone" dataKey="expenses" stroke="#ef4444" name="Operating Expenses ($)" strokeWidth={1.5} dot={{ r: 3 }} />}
+                        {visibleLines.customers && <Line yAxisId="right" type="monotone" dataKey="customers" stroke="#8b5cf6" name="Customer Count" strokeWidth={1.5} dot={{ r: 3 }} />}
+                      </LineChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
 
-                {/* Scenarios Breakdown (Text format) */}
-                <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm lg:col-span-2">
-                  <h3 className="text-sm font-semibold text-txt-primary mb-4">Evaluated Pathways</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {verdictData.scenarios.map((sc, idx) => (
-                      <div key={idx} className={`p-4 rounded-lg border transition-all flex flex-col ${sc.strong ? 'border-border bg-surface-active/40 shadow-sm' : 'border-border-light bg-surface-panel/60'}`}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-semibold text-txt-primary">{sc.title}</span>
-                          <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${sc.strong ? 'bg-surface-active text-txt-primary border border-border' : 'bg-surface-panel text-txt-secondary border border-border-light'}`}>
-                            {sc.prob}%
-                          </span>
-                        </div>
-                        <p className="text-xs text-txt-secondary leading-relaxed flex-1">{sc.desc}</p>
-                      </div>
-                    ))}
+                  {/* 5 Toggle Lines Checkboxes */}
+                  <div className="flex flex-wrap gap-4 justify-center py-4 border-t border-border-light bg-surface-panel/30 rounded-b-xl mt-4">
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-txt-primary">
+                      <input
+                        type="checkbox"
+                        checked={visibleLines.profit}
+                        onChange={() => setVisibleLines(prev => ({ ...prev, profit: !prev.profit }))}
+                        className="accent-emerald-600 rounded cursor-pointer"
+                      />
+                      Net Profit ($)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-txt-primary">
+                      <input
+                        type="checkbox"
+                        checked={visibleLines.marketShare}
+                        onChange={() => setVisibleLines(prev => ({ ...prev, marketShare: !prev.marketShare }))}
+                        className="accent-blue-600 rounded cursor-pointer"
+                      />
+                      Market Share (%)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-txt-primary">
+                      <input
+                        type="checkbox"
+                        checked={visibleLines.revenue}
+                        onChange={() => setVisibleLines(prev => ({ ...prev, revenue: !prev.revenue }))}
+                        className="accent-sky-600 rounded cursor-pointer"
+                      />
+                      Total Revenue ($)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-txt-primary">
+                      <input
+                        type="checkbox"
+                        checked={visibleLines.expenses}
+                        onChange={() => setVisibleLines(prev => ({ ...prev, expenses: !prev.expenses }))}
+                        className="accent-red-600 rounded cursor-pointer"
+                      />
+                      Operating Expenses ($)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-txt-primary">
+                      <input
+                        type="checkbox"
+                        checked={visibleLines.customers}
+                        onChange={() => setVisibleLines(prev => ({ ...prev, customers: !prev.customers }))}
+                        className="accent-violet-600 rounded cursor-pointer"
+                      />
+                      Customer Count
+                    </label>
                   </div>
                 </div>
               </div>
 
-              {/* Key Dynamics */}
+              {/* Scenarios Details */}
+              <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm">
+                <h3 className="text-sm font-semibold text-txt-primary mb-4">Evaluated Pathways</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {verdictData.scenarios.map((sc, idx) => (
+                    <div key={idx} className={`p-4 rounded-lg border transition-all flex flex-col ${sc.strong ? 'border-border bg-surface-active/40 shadow-sm' : 'border-border-light bg-surface-panel/60'}`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-semibold text-txt-primary">{sc.title}</span>
+                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${sc.strong ? 'bg-surface-active text-txt-primary border border-border' : 'bg-surface-panel text-txt-secondary border border-border-light'}`}>
+                          {sc.prob}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-txt-secondary leading-relaxed flex-1">{sc.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Key Observed Dynamics */}
               <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm">
                 <h3 className="text-sm font-semibold text-txt-primary mb-4">Key Market Dynamics Observed</h3>
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,5 +430,3 @@ export default function AIReportPage({ onStartInterrogation }) {
     </div>
   );
 }
-
-

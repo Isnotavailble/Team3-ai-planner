@@ -19,9 +19,19 @@ export default function CategorizedMetrics({ profile }) {
     return num;
   };
 
-  const budget = parseNum(profile?.budget, 15000);
-  const monthlyRevenue = parseNum(profile?.monthlyRevenue, 45000);
-  const dailySales = parseNum(profile?.dailySales, 150);
+  const monthlyRevenue = profile?.sales?.monthly || 
+                         (profile?.sales?.daily ? profile.sales.daily * 30 : 0) || 
+                         (profile?.sales?.weekly ? (profile.sales.weekly / 7) * 30 : 0) || 
+                         (profile?.sales?.yearly ? profile.sales.yearly / 12 : 0) || 
+                         12000;
+
+  const dailySales = profile?.sales?.daily || 
+                       (profile?.sales?.weekly ? profile.sales.weekly / 7 : 0) || 
+                       (profile?.sales?.monthly ? profile.sales.monthly / 30 : 0) || 
+                       (profile?.sales?.yearly ? profile.sales.yearly / 365 : 0) || 
+                       400;
+
+  const budget = profile?.expenses || 8000;
 
   // 1: Financial Health (Bar Chart)
   const financialData = useMemo(() => {
