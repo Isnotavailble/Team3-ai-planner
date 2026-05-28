@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, BarChart2, Target, TrendingUp, Settings } from 'lucide-react';
+import { Home, BarChart2, Target, TrendingUp, Settings, Database } from 'lucide-react';
 import Drilldown from '../Sidebar/Drilldown';
 import AgentChat from '../Interrogate/AgentChat';
 import WorkspaceSkeleton from './WorkspaceSkeleton';
@@ -22,6 +22,11 @@ export default function WorkspaceLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const t = translations[language];
+  const [hoveredItem, setHoveredItem] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const SIDEBAR_COLLAPSED = 56;
+  const SIDEBAR_EXPANDED = 220;
 
   // Determine drawer state from route path OR global state
   let drawerType = null;
@@ -50,88 +55,122 @@ export default function WorkspaceLayout({
     if (path.endsWith('/goals')) return 'goals';
     if (path.endsWith('/analytics')) return 'analytics';
     if (path.endsWith('/profile')) return 'profile';
+    if (path.endsWith('/directory')) return 'directory';
     return 'home';
   };
 
   const activeTab = getActiveTab();
 
   const navItems = [
-    { id: 'home', path: '/workspace', label: t.navHome, labelEn: 'Home Briefing', icon: Home },
-    { id: 'reports', path: '/workspace/reports', label: t.navReports, labelEn: 'Financial Reports', icon: BarChart2 },
-    { id: 'goals', path: '/workspace/goals', label: t.navGoals, labelEn: 'Goals & Budget', icon: Target },
-    { id: 'analytics', path: '/workspace/analytics', label: t.navAnalytics, labelEn: 'Analytics & Projections', icon: TrendingUp },
-    { id: 'profile', path: '/workspace/profile', label: t.navProfile, labelEn: 'Profile & Settings', icon: Settings }
+    { id: 'home', path: '/workspace', label: t.navHome, icon: Home },
+    { id: 'directory', path: '/workspace/directory', label: t.navDirectory || (language === 'mm' ? "အချက်အလက်များ" : "Directory"), icon: Database },
+    { id: 'reports', path: '/workspace/reports', label: t.navReports, icon: BarChart2 },
+    { id: 'goals', path: '/workspace/goals', label: t.navGoals, icon: Target },
+    { id: 'analytics', path: '/workspace/analytics', label: t.navAnalytics, icon: TrendingUp },
+    { id: 'profile', path: '/workspace/profile', label: t.navProfile, icon: Settings }
   ];
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'flex' }}>
       
       {/* LEFT NAVIGATION SIDEBAR */}
-      <aside 
+      <aside
+        onMouseEnter={() => setSidebarOpen(true)}
+        onMouseLeave={() => { setSidebarOpen(false); setHoveredItem(null); }}
         style={{
-          width: '260px',
-          background: 'var(--bg-elevated)',
+          width: sidebarOpen ? `${SIDEBAR_EXPANDED}px` : `${SIDEBAR_COLLAPSED}px`,
+          background: 'var(--bg-surface)',
           borderRight: '1px solid var(--border-default)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 15,
-          flexShrink: 0
+          flexShrink: 0,
+          overflow: 'hidden',
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {/* Sidebar Header / Logo area */}
-        <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
-          <div className="mono text-[10px] uppercase tracking-wider text-txt-tertiary mb-1" style={{ color: 'var(--text-secondary)' }}>
-            Lattice MSME
-          </div>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {language === 'mm' ? "လုပ်ငန်း စီမံခန့်ခွဲမှု" : "Business Navigator"}
-          </h2>
-        </div>
-
         {/* Sidebar Nav Links */}
-        <nav style={{ padding: '16px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <nav style={{ padding: '16px 8px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map(item => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
+
             return (
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all border-none cursor-pointer ${isActive ? 'bg-surface-active text-txt-primary font-semibold' : 'hover:bg-surface-hover text-txt-secondary'}`}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
                 style={{
-                  background: isActive ? 'var(--accent-soft)' : 'transparent',
-                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)'
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  background: isActive ? 'var(--accent-soft)' : hoveredItem === item.id ? 'var(--surface-hover)' : 'transparent',
+                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                  transition: 'background 0.15s ease'
                 }}
               >
-                <Icon size={18} style={{ color: isActive ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
-                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                  <span style={{ fontSize: '13px', fontWeight: isActive ? '600' : '500' }}>{item.label}</span>
-                  <span className="mono" style={{ fontSize: '9px', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>{item.labelEn}</span>
-                </div>
+                <Icon
+                  size={20}
+                  style={{
+                    color: isActive ? 'var(--accent)' : 'var(--text-tertiary)',
+                    flexShrink: 0
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: isActive ? '600' : '500',
+                    opacity: sidebarOpen ? 1 : 0,
+                    transform: sidebarOpen ? 'translateX(0)' : 'translateX(-8px)',
+                    transition: 'opacity 0.18s ease, transform 0.18s ease',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  {item.label}
+                </span>
               </button>
             );
           })}
         </nav>
 
         {/* Sidebar Footer info */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.03)' }}>
-          <div className="mono" style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>
+        <div style={{ padding: '12px 8px', borderTop: '1px solid rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: '9px',
+              color: 'var(--text-tertiary)',
+              whiteSpace: 'nowrap',
+              opacity: sidebarOpen ? 1 : 0,
+              transition: 'opacity 0.18s ease',
+              padding: '0 2px'
+            }}
+          >
             SYSTEM ONLINE &middot; V1.0.0
           </div>
         </div>
       </aside>
 
       {/* MAIN CONTENT OUTLET (OFFSET BY SIDEBAR WIDTH) */}
-      <div 
-        className="overflow-y-auto overflow-x-hidden" 
-        style={{ 
+      <div
+        className="overflow-y-auto overflow-x-hidden"
+        style={{
           scrollBehavior: 'smooth',
           position: 'absolute',
-          left: '260px',
+          left: sidebarOpen ? `${SIDEBAR_EXPANDED}px` : `${SIDEBAR_COLLAPSED}px`,
           top: 0,
           right: 0,
           bottom: 0,
-          background: 'var(--bg-base)'
+          background: 'var(--bg-base)',
+          transition: 'left 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {isHistoryLoading ? (

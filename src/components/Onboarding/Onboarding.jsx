@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileUp, ChevronRight, ChevronLeft, Sparkles, Check, Plus, Trash2 } from 'lucide-react';
+import { FileUp, ChevronRight, ChevronLeft, Sparkles, Check, Plus, Trash2, Monitor, Book } from 'lucide-react';
 import { translations } from '../../data/translations';
 import { importSalesFile } from '../../utils/salesImporter';
 
@@ -9,6 +9,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
   // Form Wizard Steps (0 to 10)
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState({});
+  const [focusField, setFocusField] = useState(null);
 
   // Profile Form States
   const [product, setProduct] = useState('');
@@ -16,10 +17,21 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
   const [selectedPeriods, setSelectedPeriods] = useState(['Monthly']);
   const [salesData, setSalesData] = useState({ daily: '', weekly: '', monthly: '12000', yearly: '' });
   const [expenses, setExpenses] = useState('8000');
-  const [competitorInput, setCompetitorInput] = useState('');
-  const [rivalsList, setRivalsList] = useState([]);
-  const [rivalDetails, setRivalDetails] = useState({});
-  const [currentRivalIdx, setCurrentRivalIdx] = useState(0);
+  const [rivals, setRivals] = useState([]);
+  const [newRivalName, setNewRivalName] = useState('');
+  const [newRivalPricing, setNewRivalPricing] = useState('Same price as our product');
+
+  const handleAddCompetitor = () => {
+    if (newRivalName.trim()) {
+      setRivals([...rivals, {
+        id: Date.now(),
+        name: newRivalName.trim(),
+        pricing: newRivalPricing,
+        audience: 'SMB Retailers'
+      }]);
+      setNewRivalName('');
+    }
+  };
 
   // New Data Gaps states
   const [customers, setCustomers] = useState([]);
@@ -112,32 +124,13 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // 11 steps total (0 to 10)
-  const maxSteps = 11;
+  // 10 steps total (0 to 9)
+  const maxSteps = 10;
 
   const handleNext = () => {
     if (!validateStep()) return;
 
-    if (step === 5) {
-      if (competitorInput.trim() && competitorInput.toLowerCase() !== 'none') {
-        const list = competitorInput.split(',').map(n => n.trim()).filter(Boolean);
-        setRivalsList(list);
-        const details = {};
-        list.forEach(name => { details[name] = { pricing: 'Market Matcher (Same price)', audience: 'SMB Retailers' }; });
-        setRivalDetails(details);
-        setCurrentRivalIdx(0);
-        setStep(6);
-      } else {
-        setRivalsList([]);
-        setStep(7); // Skip to customer list
-      }
-    } else if (step === 6) {
-      if (currentRivalIdx + 1 < rivalsList.length) {
-        setCurrentRivalIdx(currentRivalIdx + 1);
-      } else {
-        setStep(7); // Go to customers
-      }
-    } else if (step === 10) {
+    if (step === 9) {
       finishOnboarding();
     } else {
       setStep(step + 1);
@@ -146,7 +139,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
 
   const handleSkip = () => {
     setErrors({});
-    if (step === 10) finishOnboarding();
+    if (step === 9) finishOnboarding();
     else setStep(step + 1);
   };
 
@@ -156,11 +149,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
       hasPOS,
       sales: {},
       expenses: parseFloat(expenses) || 0,
-      rivals: rivalsList.map(name => ({
-        name,
-        pricing: rivalDetails[name]?.pricing || 'Market Matcher',
-        audience: rivalDetails[name]?.audience || 'SMB Retailers'
-      })),
+      rivals: rivals,
       targetScenario: 'Competitor Price Cut',
       expectedResult: 'Less Profit',
       customers,
@@ -177,51 +166,40 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
   };
 
   const handleBack = () => {
-    if (step === 7) {
-      if (rivalsList.length > 0) {
-        setCurrentRivalIdx(rivalsList.length - 1);
-        setStep(6);
-      } else {
-        setStep(5);
-      }
-    } else if (step === 6) {
-      if (currentRivalIdx > 0) setCurrentRivalIdx(currentRivalIdx - 1);
-      else setStep(5);
-    } else {
-      setStep(step - 1);
-    }
+    setStep(step - 1);
   };
 
   return (
-    <div className="animate-fade-in light-mesh-bg" style={{
+    <div className="animate-fade-in" style={{
       width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 10,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px'
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px',
+      background: 'var(--bg-base)'
     }}>
-      <div className="glass-card flex flex-col" style={{
-        width: '100%', maxWidth: '720px', flex: 1, maxHeight: '800px',
-        overflow: 'hidden', borderRadius: '24px', boxShadow: '0 12px 48px rgba(0,0,0,0.1)'
+      <div style={{
+        width: '100%', maxWidth: '720px', display: 'flex', flexDirection: 'column', maxHeight: '850px',
+        overflow: 'hidden', borderRadius: '24px', boxShadow: '0 12px 48px rgba(0,0,0,0.06)',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-default)'
       }}>
         
           <div className="flex flex-col h-full overflow-hidden">
-            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', background: 'transparent' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div className="flex items-center gap-1.5">
-                  <Sparkles size={16} className="text-txt-primary opacity-80" style={{ color: 'var(--accent)' }} />
                   <span className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    {language === 'mm' ? "အဆင့်" : "STEP"} {step + 1} {t.outOf || "OF"} {maxSteps}
+                    STEP {step + 1} OF {maxSteps}
                   </span>
                 </div>
                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
                   {Math.round(((step + 1) / maxSteps) * 100)}%
                 </span>
               </div>
-              <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '4px', background: 'var(--bg-track)', borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ width: `${((step + 1) / maxSteps) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s ease-out' }} />
               </div>
             </div>
             
-            <div className="flex-1 p-8 overflow-y-auto flex flex-col justify-center items-center">
-              <div style={{ maxWidth: '460px', width: '100%' }}>
+            <div className="flex-1 p-8 overflow-y-auto flex flex-col justify-start items-center">
+              <div style={{ maxWidth: '480px', width: '100%' }}>
                 
                 {step === 0 && (
                   <div className="space-y-6 animate-fade-in">
@@ -236,11 +214,13 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                     <div className="grid grid-cols-2 gap-3">
                       {['Clothing Apparel', 'Grocery Staples', 'Electronics', 'Coffee & Foods'].map(item => (
                         <button key={item} onClick={() => { setProduct(item); setErrors({}); }}
-                          className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${product === item ? 'border-border-dark font-semibold' : 'border-border-default'}`}
+                          className="p-3.5 rounded-xl border text-center cursor-pointer transition-all"
                           style={{
-                            background: product === item ? 'var(--accent-soft)' : 'var(--bg-surface)',
-                            borderColor: product === item ? 'var(--accent)' : 'var(--border-default)',
-                            color: product === item ? 'var(--accent)' : 'var(--text-primary)'
+                            background: product === item ? 'var(--accent-soft)' : 'transparent',
+                            border: product === item ? '2px solid var(--accent)' : '1.5px solid var(--border-default)',
+                            color: product === item ? 'var(--accent)' : 'var(--text-primary)',
+                            fontWeight: product === item ? 600 : 500,
+                            fontSize: '14px'
                           }}
                         >
                           {item}
@@ -253,7 +233,20 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       </label>
                       <input type="text" value={product} onChange={(e) => { setProduct(e.target.value); setErrors({}); }}
                         placeholder="e.g. Handmade Crafts"
-                        style={{ width: '100%', height: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid var(--border-default)', outline: 'none', fontSize: '14px' }}
+                        style={{ 
+                          width: '100%', 
+                          height: '44px', 
+                          padding: '0 14px', 
+                          borderRadius: '10px', 
+                          border: focusField === 'product' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          outline: 'none', 
+                          fontSize: '14px',
+                          transition: 'border-color 0.15s ease'
+                        }}
+                        onFocus={() => setFocusField('product')}
+                        onBlur={() => setFocusField(null)}
                       />
                       {errors.product && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors.product}</p>}
                     </div>
@@ -273,16 +266,24 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                     <div className="grid grid-cols-2 gap-4">
                       <button onClick={() => setHasPOS(true)}
                         className="p-6 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center gap-3"
-                        style={{ background: hasPOS ? 'var(--accent-soft)' : 'var(--bg-surface)', borderColor: hasPOS ? 'var(--accent)' : 'var(--border-default)', color: hasPOS ? 'var(--accent)' : 'var(--text-primary)' }}
+                        style={{ 
+                          background: hasPOS ? 'var(--accent-soft)' : 'transparent', 
+                          border: hasPOS ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          color: hasPOS ? 'var(--accent)' : 'var(--text-primary)' 
+                        }}
                       >
-                        <span style={{ fontSize: '28px' }}>📊</span>
+                        <Monitor size={28} />
                         <span style={{ fontWeight: 600, fontSize: '15px' }}>{language === 'mm' ? "အသုံးပြုပါသည်" : "Yes, I use POS"}</span>
                       </button>
                       <button onClick={() => setHasPOS(false)}
                         className="p-6 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center gap-3"
-                        style={{ background: !hasPOS ? 'var(--accent-soft)' : 'var(--bg-surface)', borderColor: !hasPOS ? 'var(--accent)' : 'var(--border-default)', color: !hasPOS ? 'var(--accent)' : 'var(--text-primary)' }}
+                        style={{ 
+                          background: !hasPOS ? 'var(--accent-soft)' : 'transparent', 
+                          border: !hasPOS ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          color: !hasPOS ? 'var(--accent)' : 'var(--text-primary)' 
+                        }}
                       >
-                        <span style={{ fontSize: '28px' }}>📝</span>
+                        <Book size={28} />
                         <span style={{ fontWeight: 600, fontSize: '15px' }}>{language === 'mm' ? "မသုံးပါ" : "No, manual ledger"}</span>
                       </button>
                     </div>
@@ -305,10 +306,14 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                             setErrors({}); 
                           }}
                             className="w-full flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all text-left"
-                            style={{ background: isSelected ? 'var(--accent-soft)' : 'var(--bg-surface)', borderColor: isSelected ? 'var(--accent)' : 'var(--border-default)', color: isSelected ? 'var(--accent)' : 'var(--text-primary)' }}
+                            style={{ 
+                              background: isSelected ? 'var(--accent-soft)' : 'transparent', 
+                              border: isSelected ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              color: isSelected ? 'var(--accent)' : 'var(--text-primary)' 
+                            }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              {isSelected ? <Check size={20} color="var(--accent)" /> : <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: '2px solid var(--border-default)' }} />}
+                              {isSelected ? <Check size={20} color="var(--accent)" /> : <div style={{ width: '20px', height: '20px', borderRadius: '6px', border: '2px solid var(--border-default)' }} />}
                               <span style={{ fontWeight: 600, fontSize: '15px' }}>{period}</span>
                             </div>
                           </button>
@@ -334,7 +339,20 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           </label>
                           <input type="number" value={salesData[period.toLowerCase()]} onChange={(e) => { setSalesData(prev => ({...prev, [period.toLowerCase()]: e.target.value})); setErrors({}); }}
                             placeholder="e.g. 5000" className="font-number"
-                            style={{ width: '100%', height: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid var(--border-default)', outline: 'none', fontSize: '15px' }}
+                            style={{ 
+                              width: '100%', 
+                              height: '44px', 
+                              padding: '0 14px', 
+                              borderRadius: '10px', 
+                              border: focusField === `sales_${period}` ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '15px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField(`sales_${period}`)}
+                            onBlur={() => setFocusField(null)}
                           />
                           {errors[period] && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors[period]}</p>}
                         </div>
@@ -354,7 +372,20 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       <label className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Monthly Expenses</label>
                       <input type="number" value={expenses} onChange={(e) => { setExpenses(e.target.value); setErrors({}); }}
                         placeholder="e.g. 3000" className="font-number"
-                        style={{ width: '100%', height: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid var(--border-default)', outline: 'none', fontSize: '15px' }}
+                        style={{ 
+                          width: '100%', 
+                          height: '44px', 
+                          padding: '0 14px', 
+                          borderRadius: '10px', 
+                          border: focusField === 'expenses' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          outline: 'none', 
+                          fontSize: '15px',
+                          transition: 'border-color 0.15s ease'
+                        }}
+                        onFocus={() => setFocusField('expenses')}
+                        onBlur={() => setFocusField(null)}
                       />
                       {errors.expenses && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors.expenses}</p>}
                     </div>
@@ -365,17 +396,112 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                   <div className="space-y-6 animate-fade-in">
                     <div>
                       <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        {language === 'mm' ? "ပြိုင်ဘက်များရှိပါသလား?" : "Do you have competitors?"}
+                        {language === 'mm' ? "ပြိုင်ဘက်များကို ထည့်သွင်းရန်" : "Add Competitors"}
                       </h2>
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        {language === 'mm' ? "ရှိပါက အမည်များကို ကော်မာခံ၍ ရေးပါ" : "Enter names separated by commas. Leave blank to skip."}
+                        {language === 'mm' ? "ပြိုင်ဘက်ဆိုင်များ၏ အမည်နှင့် စျေးနှုန်းမဟာဗျူဟာကို ထည့်ပါ (စိတ်ကြိုက်အချက်အလက်)" : "Enter competitor names and pricing strategies. Optional."}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <input type="text" value={competitorInput} onChange={(e) => setCompetitorInput(e.target.value)}
-                        placeholder="e.g. Shop A, Shop B"
-                        style={{ width: '100%', height: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid var(--border-default)', outline: 'none', fontSize: '14px' }}
-                      />
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            {language === 'mm' ? "ပြိုင်ဘက်ဆိုင် အမည်" : "Competitor Name"}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Shop B"
+                            value={newRivalName}
+                            onChange={e => setNewRivalName(e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'rivalName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField('rivalName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            {language === 'mm' ? "စျေးနှုန်းမဟာဗျူဟာ" : "Pricing Strategy"}
+                          </label>
+                          <select
+                            value={newRivalPricing}
+                            onChange={e => setNewRivalPricing(e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 10px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'rivalPricing' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent', 
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '13px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField('rivalPricing')}
+                            onBlur={() => setFocusField(null)}
+                          >
+                            <option value="Same price as our product">{language === 'mm' ? 'ကျွန်ုပ်တို့နှင့် စျေးနှုန်းတူ' : 'Same price as our product'}</option>
+                            <option value="Lower price than our product">{language === 'mm' ? 'ကျွန်ုပ်တို့ထက် စျေးသက်သာ' : 'Lower price than our product'}</option>
+                            <option value="Higher price than our product">{language === 'mm' ? 'ကျွန်ုပ်တို့ထက် စျေးပိုကြီး' : 'Higher price than our product'}</option>
+                          </select>
+                        </div>
+                        <button
+                          onClick={handleAddCompetitor}
+                          style={{ 
+                            width: '100%',
+                            height: '42px',
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px',
+                            transition: 'opacity 0.15s ease'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>{language === 'mm' ? "ပြိုင်ဘက်ဆိုင် ထည့်မည်" : "Add Competitor"}</span>
+                        </button>
+                      </div>
+
+                      {rivals.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {rivals.map(r => (
+                            <div key={r.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{r.name}</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  {language === 'mm' ? (
+                                    r.pricing.includes('Lower') ? 'ကျွန်ုပ်တို့ထက် စျေးသက်သာ' : r.pricing.includes('Higher') ? 'ကျွန်ုပ်တို့ထက် စျေးပိုကြီး' : 'စျေးတူ'
+                                  ) : r.pricing}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => setRivals(rivals.filter(x => x.id !== r.id))}
+                                style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -383,54 +509,188 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                 {step === 6 && (
                   <div className="space-y-6 animate-fade-in">
                     <div>
-                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                        {language === 'mm' ? `ပြိုင်ဘက် "${rivalsList[currentRivalIdx]}" ၏ အချက်အလက်များ` : `Configure "${rivalsList[currentRivalIdx]}"`}
-                      </h2>
-                    </div>
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-2">
-                        <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Pricing Strategy</label>
-                        <div className="grid grid-cols-1 gap-2">
-                          {['Discount Leader (10% cheaper)', 'Market Matcher (Same price)', 'Premium Brand (15% more expensive)'].map(opt => (
-                            <button key={opt} onClick={() => {
-                                const r = rivalsList[currentRivalIdx];
-                                setRivalDetails(prev => ({...prev, [r]: {...prev[r], pricing: opt}}));
-                              }}
-                              className={`p-3 rounded-xl border text-left cursor-pointer transition-all font-semibold ${rivalDetails[rivalsList[currentRivalIdx]]?.pricing === opt ? 'border-border-dark' : 'border-border-default'}`}
-                              style={{ background: rivalDetails[rivalsList[currentRivalIdx]]?.pricing === opt ? 'var(--accent-soft)' : 'var(--bg-surface)', color: 'var(--text-primary)' }}
-                            >
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* NEW STEPS */}
-                {step === 7 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div>
                       <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {language === 'mm' ? "သင့်ဖောက်သည်အမည်များကို ထည့်ပါ (10-30)" : "Enter your customers (10-30)"}
                       </h2>
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Optional. Used for AI churn detection.</p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input type="text" placeholder="Name" value={newCustomerName} onChange={e=>setNewCustomerName(e.target.value)} style={{flex:1, height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none'}} />
-                        <input type="text" placeholder="Contact (opt)" value={newCustomerContact} onChange={e=>setNewCustomerContact(e.target.value)} style={{flex:1, height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none'}} />
-                        <button onClick={handleAddCustomer} style={{background:'var(--accent)', color:'#fff', border:'none', borderRadius:'8px', padding:'0 16px', fontWeight:600}}><Plus size={16}/></button>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Name</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Mg Mg" 
+                            value={newCustomerName} 
+                            onChange={e=>setNewCustomerName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'customerName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('customerName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. 09-xxxxxxxxx" 
+                            value={newCustomerContact} 
+                            onChange={e=>setNewCustomerContact(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'customerContact' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('customerContact')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          onClick={handleAddCustomer} 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Customer</span>
+                        </button>
                       </div>
-                      <div className="flex flex-col gap-1 mt-4 max-h-40 overflow-y-auto">
-                        {customers.map(c => (
-                          <div key={c.id} className="flex justify-between items-center p-2 rounded bg-surface-elevated border border-border-default">
-                            <span style={{fontSize:'13px', fontWeight:600}}>{c.name}</span>
-                            <button onClick={()=>setCustomers(customers.filter(x=>x.id!==c.id))} style={{background:'none', border:'none', color:'var(--critical)', cursor:'pointer'}}><Trash2 size={14}/></button>
-                          </div>
-                        ))}
+                      
+                      {customers.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {customers.map(c => (
+                            <div key={c.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
+                                {c.contact && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.contact}</span>}
+                              </div>
+                              <button onClick={()=>setCustomers(customers.filter(x=>x.id!==c.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {step === 7 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "ထုတ်ကုန်/မီနူးစာရင်း (5-10) ကို ထည့်ပါ" : "Enter your product/menu items (5-10)"}
+                      </h2>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Product Name</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Coffee Latte" 
+                            value={newProductName} 
+                            onChange={e=>setNewProductName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'prodName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('prodName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Price (MMK)</label>
+                          <input 
+                            type="number" 
+                            placeholder="e.g. 3500" 
+                            value={newProductPrice} 
+                            onChange={e=>setNewProductPrice(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'prodPrice' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('prodPrice')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          onClick={handleAddProductList} 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Product</span>
+                        </button>
                       </div>
+                      
+                      {productsList.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {productsList.map(p => (
+                            <div key={p.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</span>
+                              <span className="font-number text-xs" style={{ color: 'var(--text-secondary)' }}>{p.price} MMK</span>
+                              <button onClick={()=>setProductsList(productsList.filter(x=>x.id!==p.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -439,24 +699,120 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                   <div className="space-y-6 animate-fade-in">
                     <div>
                       <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        {language === 'mm' ? "ထုတ်ကုန်/မီနူးစာရင်း (5-10) ကို ထည့်ပါ" : "Enter your product/menu items (5-10)"}
+                        {language === 'mm' ? "ကုန်ပစ္စည်းသွင်းသူများ (3-8) ထည့်ပါ" : "Enter your suppliers (3-8)"}
                       </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Contact details will be securely masked.</p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input type="text" placeholder="Product Name" value={newProductName} onChange={e=>setNewProductName(e.target.value)} style={{flex:2, height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none'}} />
-                        <input type="number" placeholder="Price (MMK)" value={newProductPrice} onChange={e=>setNewProductPrice(e.target.value)} style={{flex:1, height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none'}} />
-                        <button onClick={handleAddProductList} style={{background:'var(--accent)', color:'#fff', border:'none', borderRadius:'8px', padding:'0 16px', fontWeight:600}}><Plus size={16}/></button>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Supplier Name</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. ABC Wholesale" 
+                            value={newSupplierName} 
+                            onChange={e=>setNewSupplierName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Products Supplied (comma separated)</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Coffee Beans, Cups" 
+                            value={newSupplierProducts} 
+                            onChange={e=>setNewSupplierProducts(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppProds' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppProds')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Email/Phone</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. contact@abc.com" 
+                            value={newSupplierContact} 
+                            onChange={e=>setNewSupplierContact(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppCont' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppCont')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          onClick={handleAddSupplier} 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Supplier</span>
+                        </button>
                       </div>
-                      <div className="flex flex-col gap-1 mt-4 max-h-40 overflow-y-auto">
-                        {productsList.map(p => (
-                          <div key={p.id} className="flex justify-between items-center p-2 rounded bg-surface-elevated border border-border-default">
-                            <span style={{fontSize:'13px', fontWeight:600}}>{p.name}</span>
-                            <span className="font-number text-xs" style={{color:'var(--text-secondary)'}}>{p.price} MMK</span>
-                            <button onClick={()=>setProductsList(productsList.filter(x=>x.id!==p.id))} style={{background:'none', border:'none', color:'var(--critical)', cursor:'pointer'}}><Trash2 size={14}/></button>
-                          </div>
-                        ))}
-                      </div>
+                      
+                      {suppliers.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {suppliers.map(s => (
+                            <div key={s.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
+                                {s.products && s.products.length > 0 && (
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Supplies: {s.products.join(', ')}</div>
+                                )}
+                                <div className="mono" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{s.contactMasked}</div>
+                              </div>
+                              <button onClick={()=>setSuppliers(suppliers.filter(x=>x.id!==s.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -465,52 +821,21 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                   <div className="space-y-6 animate-fade-in">
                     <div>
                       <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        {language === 'mm' ? "ကုန်ပစ္စည်းသွင်းသူများ (3-8) ထည့်ပါ" : "Enter your suppliers (3-8)"}
-                      </h2>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Contact details will be securely masked.</p>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <input type="text" placeholder="Supplier Name" value={newSupplierName} onChange={e=>setNewSupplierName(e.target.value)} style={{width:'100%', height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none', marginBottom:'4px'}} />
-                      <input type="text" placeholder="Products supplied (comma separated)" value={newSupplierProducts} onChange={e=>setNewSupplierProducts(e.target.value)} style={{width:'100%', height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none', marginBottom:'4px'}} />
-                      <div className="flex gap-2">
-                        <input type="text" placeholder="Contact Email/Phone" value={newSupplierContact} onChange={e=>setNewSupplierContact(e.target.value)} style={{flex:1, height:'40px', padding:'0 10px', borderRadius:'8px', border:'1px solid var(--border-default)', outline:'none'}} />
-                        <button onClick={handleAddSupplier} style={{background:'var(--accent)', color:'#fff', border:'none', borderRadius:'8px', padding:'0 16px', fontWeight:600}}>Add</button>
-                      </div>
-                      
-                      <div className="flex flex-col gap-2 mt-4 max-h-40 overflow-y-auto">
-                        {suppliers.map(s => (
-                          <div key={s.id} className="flex justify-between items-center p-3 rounded-lg bg-surface-elevated border border-border-default">
-                            <div>
-                              <div style={{fontSize:'13px', fontWeight:600}}>{s.name}</div>
-                              <div className="mono" style={{fontSize:'10px', color:'var(--text-tertiary)'}}>{s.contactMasked}</div>
-                            </div>
-                            <button onClick={()=>setSuppliers(suppliers.filter(x=>x.id!==s.id))} style={{background:'none', border:'none', color:'var(--critical)', cursor:'pointer'}}><Trash2 size={16}/></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {step === 10 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div>
-                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {language === 'mm' ? "အရောင်းမှတ်တမ်းဖိုင် အပ်လုဒ်လုပ်ပါ" : "Bulk Sales History Import"}
                       </h2>
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Upload an Excel or CSV file (up to 30 days) to power AI forecasting.</p>
                     </div>
                     
-                    <div style={{ padding: '20px', border: '2px dashed var(--border-default)', borderRadius: '12px', textAlign: 'center', background: 'var(--bg-surface)' }}>
-                      <FileUp size={28} style={{ color: 'var(--text-tertiary)', margin: '0 auto 10px' }} />
+                    <div style={{ padding: '32px 20px', border: '2px dashed var(--border-default)', borderRadius: '16px', textAlign: 'center', background: 'transparent' }}>
+                      <FileUp size={28} style={{ color: 'var(--text-tertiary)', margin: '0 auto 12px' }} />
                       <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleBulkUpload} style={{ display: 'none' }} id="file-upload" />
-                      <label htmlFor="file-upload" style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'inline-block' }}>
+                      <label htmlFor="file-upload" style={{ background: 'var(--accent)', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'inline-block' }}>
                         {language === 'mm' ? "ဖိုင်ရွေးချယ်ရန်" : "Select File"}
                       </label>
                     </div>
                     
                     {filePreview && (
-                      <div className="mt-4 p-4 rounded-lg bg-surface-elevated border border-border-default">
+                      <div className="mt-4 p-4 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
                         <h4 style={{fontSize:'12px', fontWeight:600, marginBottom:'8px'}}>Preview (first 5 rows)</h4>
                         <div className="flex flex-col gap-1">
                           {filePreview.map((row, i) => (
@@ -528,7 +853,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
               </div>
             </div>
 
-            <div style={{ padding: '24px 32px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-elevated)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '24px 32px', borderTop: '1px solid var(--border-default)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={handleBack} disabled={step === 0}
                 className="flex items-center gap-1 bg-transparent hover:bg-surface-hover/80 text-txt-secondary disabled:opacity-30 disabled:cursor-not-allowed border-none font-semibold text-sm py-2 px-3 rounded-lg cursor-pointer"
                 style={{ color: 'var(--text-secondary)' }}
@@ -537,7 +862,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
               </button>
               
               <div className="flex gap-3">
-                {[5, 6, 7, 8, 9, 10].includes(step) && (
+                {[5, 6, 7, 8, 9].includes(step) && (
                   <button onClick={handleSkip}
                     style={{ background: 'transparent', border: '1px solid var(--border-default)', padding: '0 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
@@ -545,8 +870,9 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                   </button>
                 )}
                 
-                <button onClick={handleNext} className="btn-primary"
-                  style={{ height: '44px', padding: '0 24px', fontSize: '14px', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+                <button onClick={handleNext}
+                  className="flex items-center gap-1 bg-transparent hover:bg-surface-hover/80 text-txt-secondary border-none font-semibold text-sm py-2 px-3 rounded-lg cursor-pointer"
+                  style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   {step === maxSteps - 1 ? (language === 'mm' ? "လုပ်ငန်းစခရင်သို့ သွားမည်" : "Build Workspace") : t.next}
                   {step !== maxSteps - 1 && <ChevronRight size={16} />}

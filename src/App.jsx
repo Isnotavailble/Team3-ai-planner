@@ -9,6 +9,7 @@ import ReportsView from './components/Dashboard/ReportsView';
 import GoalsView from './components/Dashboard/GoalsView';
 import AnalyticsView from './components/Dashboard/AnalyticsView';
 import ProfileView from './components/Dashboard/ProfileView';
+import DirectoryView from './components/Dashboard/DirectoryView';
 import { mockHistories } from './data/mockHistories';
 
 export default function App() {
@@ -25,6 +26,8 @@ export default function App() {
     edges: [],
     materials: []
   });
+
+  const [dashboardData, setDashboardData] = useState(null);
 
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
@@ -52,9 +55,11 @@ export default function App() {
     async function load() {
       const data = await api.getWorkspaceData(businessProfile);
       setBaseWorkspace(data);
+      const dData = await api.getDashboardData(businessProfile, language);
+      setDashboardData(dData);
     }
     load();
-  }, [businessProfile]);
+  }, [businessProfile, language]);
 
   // Compute dynamic workspace data (no longer split by activeHistoryId)
   useEffect(() => {
@@ -124,11 +129,11 @@ export default function App() {
             language={language}
           />
         }>
-          {/* Main workspace index: Dashboard Page */}
           <Route index element={
             <DashboardPage 
               workspace={workspace} 
               businessProfile={businessProfile} 
+              dashboardData={dashboardData}
               selectedNodeId={selectedNodeId}
               handleSelectNode={handleSelectNode}
               language={language}
@@ -140,6 +145,7 @@ export default function App() {
             <DashboardPage 
               workspace={workspace} 
               businessProfile={businessProfile} 
+              dashboardData={dashboardData}
               selectedNodeId={selectedNodeId}
               handleSelectNode={handleSelectNode}
               language={language}
@@ -183,6 +189,15 @@ export default function App() {
               setBusinessProfile={setBusinessProfile}
               language={language}
               setLanguage={setLanguage}
+            />
+          } />
+
+          {/* Directory sub-page */}
+          <Route path="directory" element={
+            <DirectoryView 
+              businessProfile={businessProfile} 
+              setBusinessProfile={setBusinessProfile}
+              language={language}
             />
           } />
         </Route>

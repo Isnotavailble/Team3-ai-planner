@@ -1,411 +1,426 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, User, Pin, ArrowRight, AlertCircle, FileText, ShoppingBag, TrendingUp, HelpCircle, MessageSquare, Database, FileSpreadsheet } from 'lucide-react';
+import { User, ArrowRight, AlertCircle, ShoppingBag, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { translations } from '../../data/translations';
 
-export default function DashboardPage({ workspace = {}, businessProfile = {}, selectedNodeId, handleSelectNode, language = 'mm' }) {
+const iconMap = {
+  AlertCircle: AlertCircle,
+  ShoppingBag: ShoppingBag,
+  TrendingUp: TrendingUp,
+  User: User
+};
+
+export default function DashboardPage({ workspace = {}, businessProfile = {}, dashboardData, selectedNodeId, handleSelectNode, language = 'mm' }) {
   const navigate = useNavigate();
-  const t = translations[language];
+  const t = translations[language] || translations['en'];
 
-  // Current Date String in Mono Caps
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short'
-  }).toUpperCase().replace(',', ' ·');
-  // Dynamic Metrics based on onboarding inputs
-  let derivedDaily = 0;
-  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
-    const total = businessProfile.salesHistory.reduce((sum, h) => sum + (h.sales || 0), 0);
-    derivedDaily = Math.round(total / businessProfile.salesHistory.length);
+  if (!dashboardData) {
+    return <div className="p-8 text-center text-txt-secondary mono text-sm">Loading dashboard...</div>;
   }
 
-  const dailySales = derivedDaily || businessProfile?.sales?.daily || 400;
-  const weeklySales = businessProfile?.sales?.weekly || (dailySales * 7);
-  const monthlySales = businessProfile?.sales?.monthly || (dailySales * 30) || 12000;
-  const monthlyExpenses = businessProfile?.expenses || 8000;
-  const netProfit = monthlySales - monthlyExpenses;
+  const {
+    metrics,
+    availablePeriods = [],
+    chartData,
+    networkItems,
+    attentionItems,
+    topProducts
+  } = dashboardData;
 
-  // Recent activity list - dynamically built using customer, products and suppliers lists
-  const recentFacts = [];
-  
-  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
-    recentFacts.push({
-      source: 'excel',
-      descMm: `အရောင်းမှတ်တမ်းဖိုင် (ဒေတာ ${businessProfile.salesHistory.length} ရက်စာ) တင်သွင်းပြီးပါပြီ`,
-      descEn: `Sales history imported: ${businessProfile.salesHistory.length} days of data loaded`,
-      amount: `${businessProfile.salesHistory.length} days`,
-      time: "Just now"
-    });
+  const { dailySales, weeklySales, monthlySales, yearlySales, monthlyExpenses, netProfit, itemsLowCount } = metrics;
+
+  // 1. Chart Choices
+  const chartChoices = [];
+  if (chartData && chartData.length > 0) {
+    chartChoices.push('history');
   }
+  availablePeriods.forEach(p => {
+    chartChoices.push(p);
+  });
 
-  if (businessProfile?.customers && businessProfile.customers.length > 0) {
-    const cust = businessProfile.customers[0];
-    const prodNameMm = businessProfile.products && businessProfile.products.length > 0 ? businessProfile.products[0].name : "ဆန်";
-    const prodNameEn = businessProfile.products && businessProfile.products.length > 0 ? businessProfile.products[0].name : "Rice Bags";
-    
-    recentFacts.push({
-      source: 'telegram',
-      descMm: `${cust.name} မှ ${prodNameMm} ဝယ်ယူသွားပြီး ကျပ် ၁၅,၀၀၀ ကျန်ရှိသည်`,
-      descEn: `${cust.name} took ${prodNameEn}, owes 15,000 MMK`,
-      amount: "15,000 MMK",
-      time: "10 mins ago"
-    });
-  }
+  // State for active chart choice
+  const [activeChartPeriod, setActiveChartPeriod] = React.useState(() => {
+    return chartChoices[0] || null;
+  });
 
-  if (businessProfile?.products && businessProfile.products.length > 0) {
-    const prod = businessProfile.products[0];
-    const qty = 20;
-    const totalVal = prod.price * qty;
-    recentFacts.push({
-      source: 'voice',
-      descMm: `${prod.name} ${qty} ခု ရောင်းရသည်။ စုစုပေါင်း ကျပ် ${totalVal.toLocaleString()} ရရှိသည်`,
-      descEn: `Sold ${qty} units of ${prod.name} for ${totalVal.toLocaleString()} MMK`,
-      amount: `${totalVal.toLocaleString()} MMK`,
-      time: "1 hour ago"
-    });
-  }
-
-  if (businessProfile?.suppliers && businessProfile.suppliers.length > 0) {
-    const supp = businessProfile.suppliers[0];
-    recentFacts.push({
-      source: 'pdf',
-      descMm: `လက်ကား ပံ့ပိုးသူ ${supp.name} မှ ကုန်ပစ္စည်းပေးပို့လွှာ လက်ခံရရှိသည်`,
-      descEn: `Invoice received from wholesale supplier ${supp.name}`,
-      amount: "350,000 MMK",
-      time: "4 hours ago"
-    });
-  }
-
-  // Fallbacks if list is too short
-  if (recentFacts.length < 4) {
-    const fallbacks = [
-      { source: 'telegram', descMm: "ဦးအောင်ကျော် ဆီ ၂ ပျား ဝယ်ယူသွားပြီး ကျပ် ၁၅,၀၀၀ ကျန်ရှိသည်", descEn: "U Aung Kyaw took 2 viss of oil, owes 15,000 MMK", amount: "15,000 MMK", time: "10 mins ago" },
-      { source: 'voice', descMm: "ဆန် ၂၀ အိတ်ရောင်းရသည်။ စုစုပေါင်း ၁၂ သိန်းရရှိသည်", descEn: "Sold 20 bags of rice for 1.2M MMK", amount: "1,200,000 MMK", time: "1 hour ago" },
-      { source: 'pdf', descMm: "လက်ကား ပံ့ပိုးသူ ဆီဆိုင်မှ ငွေတောင်းခံလွှာ လက်ခံရရှိသည်", descEn: "Invoice received from wholesale supplier", amount: "350,000 MMK", time: "4 hours ago" },
-      { source: 'excel', descMm: "လက်ကျန်စာရင်း ဒေတာ ၂၄ ခုအား အလိုအလျောက် သွင်းယူပြီးသည်", descEn: "Spreadsheet import completed: 24 inventory items", amount: "24 items", time: "Yesterday" }
-    ];
-    
-    fallbacks.forEach(fb => {
-      if (recentFacts.length < 4 && !recentFacts.some(f => f.source === fb.source)) {
-        recentFacts.push(fb);
-      }
-    });
-  }
-
-  // Needs Attention items - dynamically customized using custom input directories
-  const overdueCust = businessProfile?.customers && businessProfile.customers.length > 0 ? businessProfile.customers[0].name : "ဦးအောင်ကျော်";
-  
-  const lowStockProdMm = businessProfile?.products && businessProfile.products.length > 0 ? `${businessProfile.products[0].name} ကုန်စည်လက်ကျန် နည်းနေပါသည်` : "ဆန်ကုန်စည်လက်ကျန် နည်းနေပါသည်";
-  const lowStockProdEn = businessProfile?.products && businessProfile.products.length > 0 ? `${businessProfile.products[0].name} inventory level low` : "Rice bags inventory level low";
-  const lowStockDescMm = businessProfile?.products && businessProfile.products.length > 0 ? `လက်ကျန် ၃ ခုသာရှိတော့သဖြင့် သတ်မှတ်ချက် ${businessProfile.thresholds?.inventoryLow || 10} အတိုင်း ပြန်လည်မှာယူရန် အကြံပြုပါသည်` : "လက်ကျန် ၃ အိတ်သာရှိတော့သဖြင့် ထပ်မံမှာယူရန် အကြံပြုပါသည်";
-  const lowStockDescEn = businessProfile?.products && businessProfile.products.length > 0 ? `Only 3 units left, reorder threshold of ${businessProfile.thresholds?.inventoryLow || 10} reached` : "Only 3 bags left, reorder threshold reached";
-
-  const mainRival = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "ပြိုင်ဘက် ဆိုင်ကြီး";
-  const mainRivalEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "Rival Shop";
-  const rivalStrategyMm = businessProfile?.rivals && businessProfile.rivals.length > 0 ? `မဟာဗျူဟာ: ${businessProfile.rivals[0].pricing}` : "စက်ဆန်းရပ်ကွက်ရှိ ဆိုင်ကြီးမှ ဆန်စျေးနှုန်းများ စတင်လျှော့ချလာသည်";
-  const rivalStrategyEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? `Pricing Strategy: ${businessProfile.rivals[0].pricing}` : "Competitor price drop detected in neighboring ward";
-
-  const attentionItems = [
-    { type: 'receivables', titleMm: `${overdueCust} - ပေးရန်ကျန်ငွေ ရက်လွန်နေသည်`, titleEn: `${overdueCust} - Receivable outstanding`, descMm: "၁၅ ရက်ကျော် ရက်လွန်နေသဖြင့် အကြောင်းကြားရန် လိုအပ်သည်", descEn: "Overdue by 15 days, send reminder", icon: AlertCircle, color: 'var(--caution)' },
-    { type: 'inventory', titleMm: lowStockProdMm, titleEn: lowStockProdEn, descMm: lowStockDescMm, descEn: lowStockDescEn, icon: ShoppingBag, color: 'var(--critical)' },
-    { type: 'competitor', titleMm: `${mainRival} မှ စျေးနှုန်း ၅% လျှော့ချလိုက်သည်`, titleEn: `${mainRivalEn} cut prices by 5%`, descMm: rivalStrategyMm, descEn: rivalStrategyEn, icon: TrendingUp, color: 'var(--accent)' }
-  ];
-
-  // Top products
-  const topProducts = [];
-  if (businessProfile?.products && businessProfile.products.length > 0) {
-    businessProfile.products.forEach((prod, idx) => {
-      if (idx < 3) {
-        topProducts.push({
-          nameMm: prod.name,
-          nameEn: prod.name,
-          value: `${(prod.price * 10).toLocaleString()} MMK`,
-          pct: 85 - (idx * 25)
-        });
-      }
-    });
-  }
-
-  if (topProducts.length < 3) {
-    const fallbacks = [
-      { nameMm: "ဆန် (Rice Bags)", nameEn: "Rice Bags", value: "850,000 MMK", pct: 75 },
-      { nameMm: "စားအုန်းဆီ (Cooking Oil)", nameEn: "Cooking Oil", value: "240,000 MMK", pct: 45 },
-      { nameMm: "ပဲအမျိုးမျိုး (Pulses)", nameEn: "Pulses & Beans", value: "110,000 MMK", pct: 20 }
-    ];
-    fallbacks.forEach(fb => {
-      if (topProducts.length < 3 && !topProducts.some(p => p.nameEn === fb.nameEn)) {
-        topProducts.push(fb);
-      }
-    });
-  }
-
-  const itemsLowCount = businessProfile?.products && businessProfile.products.length > 0 ? Math.round(businessProfile.products.length / 3) || 1 : 3;
-
-  // Source Icons helper
-  const getSourceIcon = (source) => {
-    switch (source) {
-      case 'telegram': return <MessageSquare size={16} />;
-      case 'pdf': return <FileText size={16} />;
-      case 'excel': return <FileSpreadsheet size={16} />;
-      case 'voice':
-      default: return <Database size={16} />;
+  // Sync active period on update
+  React.useEffect(() => {
+    if (chartChoices.length > 0 && !chartChoices.includes(activeChartPeriod)) {
+      setActiveChartPeriod(chartChoices[0]);
     }
+  }, [dashboardData]);
+
+  // Sinusoidal trend generator for manual periods
+  const generateSimulatedData = (period, baseValue) => {
+    const dataPoints = [];
+    let count = 6;
+    let labelPrefix = '';
+
+    if (period === 'daily') {
+      count = 7;
+      labelPrefix = 'Day ';
+    } else if (period === 'weekly') {
+      count = 6;
+      labelPrefix = 'Week ';
+    } else if (period === 'monthly') {
+      count = 6;
+      labelPrefix = 'Month ';
+    } else if (period === 'yearly') {
+      count = 5;
+      labelPrefix = 'Year ';
+    }
+
+    for (let i = 1; i <= count; i++) {
+      // Sine wave with +-15% variation
+      const variance = Math.sin(i * 1.2) * 0.15;
+      const value = Math.round(baseValue * (1 + variance));
+      dataPoints.push({
+        name: `${labelPrefix}${i}`,
+        sales: value
+      });
+    }
+    return dataPoints;
   };
+
+  // Get active chart data
+  let activeChartData = [];
+  if (activeChartPeriod === 'history') {
+    activeChartData = chartData;
+  } else if (activeChartPeriod === 'daily' && dailySales !== null) {
+    activeChartData = generateSimulatedData('daily', dailySales);
+  } else if (activeChartPeriod === 'weekly' && weeklySales !== null) {
+    activeChartData = generateSimulatedData('weekly', weeklySales);
+  } else if (activeChartPeriod === 'monthly' && monthlySales !== null) {
+    activeChartData = generateSimulatedData('monthly', monthlySales);
+  } else if (activeChartPeriod === 'yearly' && yearlySales !== null) {
+    activeChartData = generateSimulatedData('yearly', yearlySales);
+  }
+
+  // 2. Build dynamic KPI cards (Restricted to exactly 4 for the premium layout)
+  const kpiCards = [];
+  if (weeklySales !== null) {
+    kpiCards.push({
+      key: 'weeklySales',
+      label: language === 'mm' ? "အပတ်စဉ် အရောင်း" : "Weekly Revenue",
+      value: weeklySales,
+      unit: 'MMK'
+    });
+  }
+  if (monthlySales !== null) {
+    kpiCards.push({
+      key: 'monthlySales',
+      label: language === 'mm' ? "လစဉ် အရောင်း" : "Monthly Revenue",
+      value: monthlySales,
+      unit: 'MMK'
+    });
+  }
+  if (netProfit !== null) {
+    kpiCards.push({
+      key: 'netProfit',
+      label: language === 'mm' ? "အမြတ်" : "Profit",
+      value: netProfit,
+      unit: 'MMK'
+    });
+  }
+  if (monthlyExpenses !== null) {
+    kpiCards.push({
+      key: 'monthlyExpenses',
+      label: language === 'mm' ? "လစဉ် အသုံးစရိတ်" : "Monthly Expenses",
+      value: monthlyExpenses,
+      unit: 'MMK'
+    });
+  }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
-      {/* 1. HEADER REGION */}
+      {/* 1. HEADER REGION (No Date) */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div className="mono font-semibold" style={{ fontSize: '10px', color: 'var(--text-secondary)', letterSpacing: '0.15em' }}>
-            {formattedDate}
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>
-            {t.greeting}, {businessProfile?.product ? (language === 'mm' ? "လုပ်ငန်းရှင်" : "Owner") : "Anya"}
+          <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {t.greeting || "မင်္ဂလာပါ"}{businessProfile?.ownerName ? `, ${businessProfile.ownerName}` : ''}
           </h1>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            {t.briefingSub} &middot; {t.updatedJustNow}
+            {t.briefingSub || "Here is your business overview"} &middot; {t.updatedJustNow || "Updated just now"}
           </p>
         </div>
-
       </header>
 
-      {/* 2. HERO PINNED CARDS STRIP */}
+      {/* 2. UNIFIED KPI CARDS GRID */}
       <section>
-        <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-          
-          {/* Card 1: Today's Sales */}
-          <div 
-            className="flex-1 min-w-[280px]"
-            style={{
-              background: 'var(--bg-surface)',
-              borderRadius: '16px',
-              padding: '20px',
-              border: '1px solid var(--border-default)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-            }}
-          >
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.salesToday}
-            </span>
-            <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              {dailySales.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '24px'
+        }}>
+          {kpiCards.length > 0 ? (
+            kpiCards.map(card => (
+              <div 
+                key={card.key} 
+                className="group"
+                style={{ 
+                  background: 'var(--bg-surface)', 
+                  borderRadius: '16px', 
+                  padding: '24px', 
+                  border: '1px solid var(--border-default)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.02)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.06)';
+                  e.currentTarget.style.borderColor = 'var(--accent-soft)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.02)';
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {card.label}
+                  </span>
+                </div>
+                <div className="font-number" style={{ fontSize: '32px', color: 'var(--text-primary)', marginTop: '12px', fontWeight: 700 }}>
+                  {card.value.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-tertiary)' }}>{card.unit}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border-default)', borderRadius: '12px' }}>
+              {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "No active metrics to display. Add sales information to start."}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-              {language === 'mm' ? "ပျမ်းမျှ နေ့စဉ်ရောင်းအားပေါ် အခြေခံထားသည်" : "Calculated from daily averages"}
-            </div>
-          </div>
-
-          {/* Card 2: Receivables */}
-          <div 
-            className="flex-1 min-w-[280px]"
-            style={{
-              background: 'var(--bg-surface)',
-              borderRadius: '16px',
-              padding: '20px',
-              border: '1px solid var(--border-default)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-            }}
-          >
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.outstandingReceivables}
-            </span>
-            <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              2,450 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-              <span style={{ color: 'var(--caution)', fontWeight: 600 }}>{language === 'mm' ? "၂ ဆိုင် ကျန်ရှိနေသည်" : "2 invoices outstanding"}</span>
-            </div>
-          </div>
-
-          {/* Card 3: Weekly Profit */}
-          <div 
-            className="flex-1 min-w-[280px]"
-            style={{
-              background: 'var(--bg-surface)',
-              borderRadius: '16px',
-              padding: '20px',
-              border: '1px solid var(--border-default)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
-            }}
-          >
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.weeklyProfit}
-            </span>
-            <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              {Math.round(netProfit / 4).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
-            </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-              <span style={{ color: 'var(--positive)', fontWeight: 600 }}>+8.2% {language === 'mm' ? "တိုးတက်လာသည်" : "increase this week"}</span>
-            </div>
-          </div>
-
+          )}
         </div>
       </section>
 
-      {/* 3. WEEK STRIP GRID */}
-      <section style={{ padding: '8px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-          <div>
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.mtdRevenue}
-            </span>
-            <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              {monthlySales.toLocaleString()} MMK
-            </div>
-          </div>
-          <div>
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.outstandingCash}
-            </span>
-            <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              3,120 MMK
-            </div>
-          </div>
-          <div>
-            <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.itemsLow}
-            </span>
-            <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              {itemsLowCount} {language === 'mm' ? "မျိုး" : "Items"}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. TWO-COLUMN LAYOUT: NEEDS ATTENTION + TOP PRODUCTS */}
+      {/* 4. CHARTS AND TOP PRODUCTS ROW */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
         
-        {/* Left Column: Needs Attention Queue */}
+        {/* Left Column: Sales Chart */}
         <section className="space-y-4">
-          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            {t.needsAttentionTitle}
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {attentionItems.map((item, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  background: 'var(--bg-surface)',
-                  borderRadius: '16px',
-                  padding: '16px',
-                  border: '1px solid var(--border-default)',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '14px',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease'
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-              >
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '12px',
-                  background: item.color === 'var(--critical)' ? 'rgba(163, 61, 92, 0.1)' : item.color === 'var(--caution)' ? 'rgba(201, 119, 85, 0.1)' : 'rgba(107, 45, 123, 0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: item.color, flexShrink: 0
-                }}>
-                  <item.icon size={18} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {language === 'mm' ? item.titleMm : item.titleEn}
-                  </h4>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {language === 'mm' ? item.descMm : item.descEn}
-                  </p>
-                </div>
-                <ArrowRight size={14} style={{ color: 'var(--text-tertiary)', alignSelf: 'center' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
+            <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              {language === 'mm' ? "အရောင်း မှတ်တမ်း" : "Sales History"}
+            </h3>
+            {chartChoices.length > 1 && (
+              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-default)' }}>
+                {chartChoices.map(choice => {
+                  let label = '';
+                  if (choice === 'history') {
+                    label = language === 'mm' ? 'တင်သွင်းမှု' : 'Imported';
+                  } else if (choice === 'daily') {
+                    label = language === 'mm' ? 'နေ့စဉ်' : 'Daily';
+                  } else if (choice === 'weekly') {
+                    label = language === 'mm' ? 'အပတ်စဉ်' : 'Weekly';
+                  } else if (choice === 'monthly') {
+                    label = language === 'mm' ? 'လစဉ်' : 'Monthly';
+                  } else if (choice === 'yearly') {
+                    label = language === 'mm' ? 'နှစ်စဉ်' : 'Yearly';
+                  }
+
+                  const isActive = activeChartPeriod === choice;
+                  return (
+                    <button
+                      key={choice}
+                      onClick={() => setActiveChartPeriod(choice)}
+                      style={{
+                        background: isActive ? 'var(--bg-surface)' : 'transparent',
+                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: 'pointer',
+                        boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            )}
+          </div>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-default)', height: '280px', boxShadow: '0 4px 24px rgba(0,0,0,0.02)' }}>
+            {activeChartData && activeChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={activeChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-default)" strokeOpacity={0.5} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
+                    dy={12} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
+                    dx={-10}
+                  />
+                  <Tooltip 
+                    contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
+                    itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                    cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  />
+                  <Line type="monotone" dataKey="sales" stroke="var(--accent)" strokeWidth={3} dot={{ r: 4, fill: 'var(--bg-surface)', stroke: 'var(--accent)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
+              </div>
+            )}
           </div>
         </section>
 
         {/* Right Column: Top Products list */}
         <section className="space-y-4">
           <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            {t.topProductsTitle}
+            {t.topProductsTitle || "အရောင်းရဆုံး ပစ္စည်းများ"}
           </h3>
           <div style={{
             background: 'var(--bg-surface)',
-            borderRadius: '16px',
-            padding: '20px',
+            borderRadius: '12px',
+            padding: '16px',
             border: '1px solid var(--border-default)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '12px',
+            height: '240px',
+            overflowY: 'auto'
           }}>
-            {topProducts.map((prod, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {idx + 1}. {language === 'mm' ? prod.nameMm : prod.nameEn}
-                  </span>
-                  <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{prod.value}</span>
-                </div>
-                {/* Solid progress bar */}
-                <div style={{ width: '100%', height: '4px', background: 'var(--bg-elevated)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${prod.pct}%`,
-                    height: '100%',
-                    background: 'var(--accent)'
-                  }} />
-                </div>
+            {topProducts && topProducts.length > 0 ? topProducts.map((prod, idx) => (
+              <div 
+                key={idx} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '12px 0', 
+                  borderBottom: idx === topProducts.length - 1 ? 'none' : '1px solid var(--border-default)'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {language === 'mm' ? prod.nameMm : prod.nameEn}
+                </span>
+                <span className="font-number" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {prod.value}
+                </span>
               </div>
-            ))}
+            )) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
+              </div>
+            )}
           </div>
         </section>
 
       </div>
 
-      {/* 5. RECENT ACTIVITY (INGESTED ACTIVITY FEED) */}
-      <section className="space-y-4">
-        <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-          {t.recentActivityTitle}
-        </h3>
-        <div style={{
-          background: 'var(--bg-surface)',
-          borderRadius: '16px',
-          padding: '8px 20px',
-          border: '1px solid var(--border-default)'
-        }}>
-          {recentFacts.map((fact, idx) => (
-            <div 
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 0',
-                borderBottom: idx === recentFacts.length - 1 ? 'none' : '1px solid var(--border-default)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{
-                  width: '32px', height: '32px', borderRadius: '8px',
-                  background: 'var(--bg-icon-neutral)', color: 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  {getSourceIcon(fact.source)}
+      {/* 5. ALERTS AND BUSINESS NETWORK ROW */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+        
+        {/* Left Column: Needs Attention Queue (Raw Icons) */}
+        <section className="space-y-4">
+          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {t.needsAttentionTitle || "အထူးဂရုပြုရန်"}
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {attentionItems && attentionItems.length > 0 ? attentionItems.map((item, idx) => {
+              const ItemIcon = iconMap[item.icon] || AlertCircle;
+              return (
+                <div 
+                  key={idx}
+                  style={{
+                    background: 'var(--bg-surface)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    border: '1px solid var(--border-default)',
+                    display: 'flex',
+                    alignItems: 'start',
+                    gap: '14px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {/* Raw inline icon without background circle */}
+                  <div style={{ color: item.color, flexShrink: 0, marginTop: '2px' }}>
+                    <ItemIcon size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {language === 'mm' ? item.titleMm : item.titleEn}
+                    </h4>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      {language === 'mm' ? item.descMm : item.descEn}
+                    </p>
+                  </div>
+                  <ArrowRight size={14} style={{ color: 'var(--text-tertiary)', alignSelf: 'center' }} />
                 </div>
-                <div>
-                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {language === 'mm' ? fact.descMm : fact.descEn}
-                  </p>
-                  <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-                    {t.sourceBadge}: {fact.source.toUpperCase()} &middot; {fact.time}
-                  </span>
+              );
+            }) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px', border: '1px dashed var(--border-default)', borderRadius: '12px' }}>
+                {language === 'mm' ? "အထူးဂရုပြုရန် မရှိပါ" : "All good! Nothing needs attention right now."}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Right Column: Business Network (Replacing Recent Activity) */}
+        <section className="space-y-4">
+          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {language === 'mm' ? "လုပ်ငန်းကွန်ရက်" : "Business Network"}
+          </h3>
+          <div style={{
+            background: 'var(--bg-surface)',
+            borderRadius: '12px',
+            padding: '8px 20px',
+            border: '1px solid var(--border-default)'
+          }}>
+            {networkItems && networkItems.length > 0 ? networkItems.map((net, idx) => (
+              <div 
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 0',
+                  borderBottom: idx === networkItems.length - 1 ? 'none' : '1px solid var(--border-default)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    <User size={16} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {net.name}
+                    </p>
+                    <span className="mono" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                      {net.detail}
+                    </span>
+                  </div>
+                </div>
+                <div className="mono" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                  {net.contact}
                 </div>
               </div>
-              <div className="font-number" style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
-                {fact.amount}
+            )) : (
+              <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            )}
+          </div>
+        </section>
+
+      </div>
 
     </div>
   );

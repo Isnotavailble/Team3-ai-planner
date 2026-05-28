@@ -2,6 +2,7 @@ export const translations = {
   mm: {
     // Navigation
     navHome: "ပင်မစာမျက်နှာ",
+    navDirectory: "အချက်အလက်များ",
     navReports: "ဘဏ္ဍာရေး အစီရင်ခံစာ",
     navGoals: "ပန်းတိုင်နှင့် ဘတ်ဂျက်",
     navAnalytics: "ထိုးထွင်းသိမြင်မှု",
@@ -31,7 +32,7 @@ export const translations = {
     mtdRevenue: "ယခုလ အရောင်း",
     outstandingCash: "ရရန်ရှိငွေစုစုပေါင်း",
     itemsLow: "ပစ္စည်းကုန်လုနီးပါး",
-    topProductsTitle: "ထိပ်တန်း ထုတ်ကုန်နှင့် ဖောက်သည်များ",
+    topProductsTitle: "ထုတ်ကုန်များ",
     needsAttentionTitle: "အထူးဂရုပြုရန် လိုအပ်ချက်များ",
     recentActivityTitle: "မကြာသေးမီက ဆောင်ရွက်ချက်များ",
     timeAgo: "လွန်ခဲ့သော",
@@ -128,6 +129,7 @@ export const translations = {
   en: {
     // Navigation
     navHome: "Home Briefing",
+    navDirectory: "Directory",
     navReports: "Financial Reports",
     navGoals: "Goals & Budget",
     navAnalytics: "Analytics & Projections",
@@ -157,7 +159,7 @@ export const translations = {
     mtdRevenue: "MTD Revenue",
     outstandingCash: "Total Receivables",
     itemsLow: "Inventory Low",
-    topProductsTitle: "Top Products & Customers",
+    topProductsTitle: "Products",
     needsAttentionTitle: "Needs Attention Queue",
     recentActivityTitle: "Recent Activity",
     timeAgo: "ago",

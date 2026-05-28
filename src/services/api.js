@@ -1,6 +1,7 @@
 import { mapToEntityDTO } from '../dtos/entity.dto';
 import { mapToEdgeDTO } from '../dtos/edge.dto';
 import { mapToSimulationDTO } from '../dtos/simulation.dto';
+import { mapToDashboardDTO } from '../dtos/dashboard.dto';
 import {
   RAW_ENTITIES,
   RAW_EDGES,
@@ -163,6 +164,11 @@ class LatticeApiService {
       edges: dynamicEdges.map(mapToEdgeDTO),
       materials: this.materials
     };
+  }
+
+  async getDashboardData(businessProfile, language = 'mm') {
+    await new Promise(resolve => setTimeout(resolve, 100)); // simulate network delay
+    return mapToDashboardDTO(businessProfile, language);
   }
 
   async importDocument({ fileType, fileName, url }) {
