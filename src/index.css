@@ -3,10 +3,10 @@
 @import "tailwindcss/utilities";
 
 :root {
-  /* Plum Linen Color Tokens */
-  --bg-base: #F8F4F1;        /* warm cream canvas */
+  /* Plum Linen Color Tokens modified for pure white background */
+  --bg-base: #FFFFFF;        /* pure white canvas */
   --bg-surface: #FFFFFF;     /* cards, raised elements */
-  --bg-elevated: #F2EDE9;    /* subtle inset, week strip */
+  --bg-elevated: #F8F9FA;    /* subtle inset (slightly darker than white for contrast) */
   --bg-gradient-1: linear-gradient(135deg, #F0E6F0 0%, #F7E8E0 50%, #FCEEE0 100%); /* soft plum-to-peach */
   --bg-gradient-2: linear-gradient(180deg, #3A1A4A 0%, #2D1238 100%);             /* deep plum mic gradient */
   --bg-icon-soft: #EDE4ED;   /* icon container soft plum */

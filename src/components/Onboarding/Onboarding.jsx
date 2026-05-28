@@ -337,7 +337,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <label className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                             Average {period} Sales (MMK)
                           </label>
-                          <input type="number" value={salesData[period.toLowerCase()]} onChange={(e) => { setSalesData(prev => ({...prev, [period.toLowerCase()]: e.target.value})); setErrors({}); }}
+                          <input type="number" min="0" step="1" required value={salesData[period.toLowerCase()]} onChange={(e) => { setSalesData(prev => ({...prev, [period.toLowerCase()]: e.target.value})); setErrors({}); }}
                             placeholder="e.g. 5000" className="font-number"
                             style={{ 
                               width: '100%', 
@@ -370,7 +370,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Monthly Expenses</label>
-                      <input type="number" value={expenses} onChange={(e) => { setExpenses(e.target.value); setErrors({}); }}
+                      <input type="number" min="0" step="1" required value={expenses} onChange={(e) => { setExpenses(e.target.value); setErrors({}); }}
                         placeholder="e.g. 3000" className="font-number"
                         style={{ 
                           width: '100%', 
@@ -403,13 +403,14 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       </p>
                     </div>
                     <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddCompetitor(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
                         <div className="flex flex-col gap-1.5">
                           <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                             {language === 'mm' ? "ပြိုင်ဘက်ဆိုင် အမည်" : "Competitor Name"}
                           </label>
                           <input
                             type="text"
+                            required
                             placeholder="e.g. Shop B"
                             value={newRivalName}
                             onChange={e => setNewRivalName(e.target.value)}
@@ -457,7 +458,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           </select>
                         </div>
                         <button
-                          onClick={handleAddCompetitor}
+                          type="submit"
                           style={{ 
                             width: '100%',
                             height: '42px',
@@ -478,7 +479,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <Plus size={16} />
                           <span>{language === 'mm' ? "ပြိုင်ဘက်ဆိုင် ထည့်မည်" : "Add Competitor"}</span>
                         </button>
-                      </div>
+                      </form>
 
                       {rivals.length > 0 && (
                         <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
@@ -515,11 +516,12 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Optional. Used for AI churn detection.</p>
                     </div>
                     <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddCustomer(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
                         <div className="flex flex-col gap-1.5">
                           <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Name</label>
                           <input 
                             type="text" 
+                            required
                             placeholder="e.g. Mg Mg" 
                             value={newCustomerName} 
                             onChange={e=>setNewCustomerName(e.target.value)} 
@@ -563,7 +565,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           />
                         </div>
                         <button 
-                          onClick={handleAddCustomer} 
+                          type="submit" 
                           style={{ 
                             width: '100%', 
                             height: '42px', 
@@ -583,7 +585,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <Plus size={16} />
                           <span>Add Customer</span>
                         </button>
-                      </div>
+                      </form>
                       
                       {customers.length > 0 && (
                         <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
@@ -610,11 +612,12 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       </h2>
                     </div>
                     <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddProductList(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
                         <div className="flex flex-col gap-1.5">
                           <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Product Name</label>
                           <input 
                             type="text" 
+                            required
                             placeholder="e.g. Coffee Latte" 
                             value={newProductName} 
                             onChange={e=>setNewProductName(e.target.value)} 
@@ -638,6 +641,9 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Price (MMK)</label>
                           <input 
                             type="number" 
+                            min="0"
+                            step="1"
+                            required
                             placeholder="e.g. 3500" 
                             value={newProductPrice} 
                             onChange={e=>setNewProductPrice(e.target.value)} 
@@ -658,7 +664,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           />
                         </div>
                         <button 
-                          onClick={handleAddProductList} 
+                          type="submit" 
                           style={{ 
                             width: '100%', 
                             height: '42px', 
@@ -678,7 +684,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <Plus size={16} />
                           <span>Add Product</span>
                         </button>
-                      </div>
+                      </form>
                       
                       {productsList.length > 0 && (
                         <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
@@ -704,11 +710,12 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Contact details will be securely masked.</p>
                     </div>
                     <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddSupplier(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
                         <div className="flex flex-col gap-1.5">
                           <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Supplier Name</label>
                           <input 
                             type="text" 
+                            required
                             placeholder="e.g. ABC Wholesale" 
                             value={newSupplierName} 
                             onChange={e=>setNewSupplierName(e.target.value)} 
@@ -775,7 +782,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           />
                         </div>
                         <button 
-                          onClick={handleAddSupplier} 
+                          type="submit" 
                           style={{ 
                             width: '100%', 
                             height: '42px', 
@@ -795,7 +802,7 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
                           <Plus size={16} />
                           <span>Add Supplier</span>
                         </button>
-                      </div>
+                      </form>
                       
                       {suppliers.length > 0 && (
                         <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">

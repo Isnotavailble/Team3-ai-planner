@@ -136,3 +136,97 @@ export const RAW_SIM_RESULTS = {
     ]
   }
 };
+
+export const RAW_INSIGHTS = {
+  headlineMm: "ပြိုင်ဘက်များ၏ ဈေးနှုန်းလျှော့ချမှုနှင့် ငွေချေစနစ်များကြောင့် ဈေးကွက်ဝေစု ၄၀% ဆုံးရှုံးနိုင်ခြေရှိသည်။",
+  headlineEn: "Risk of losing 40% market share due to aggressive competitor pricing and credit terms.",
+  growthScore: 68,
+  marketScore: 74,
+  riskCard: {
+    level: "medium", // low, medium, high
+    reasonMm: "လတ်တလော ဈေးကွက်အပြောင်းအလဲများ ရှိသော်လည်း ဖောက်သည်ဟောင်းများ၏ ခိုင်မာသော ယုံကြည်မှုကို ရရှိထားသည်။",
+    reasonEn: "Current market dynamics are shifting, but core loyal customers maintain overall stability."
+  },
+  swot: [
+    {
+      type: "strength",
+      titleMm: "ဖောက်သည်ဟောင်းများ၏ ယုံကြည်မှု",
+      titleEn: "Core Customer Loyalty",
+      descMm: "ဖောက်သည်ဟောင်းများ၏ ခိုင်မာသော ယုံကြည်ကိုးစားမှုနှင့် ဆက်သွယ်ရေး ကောင်းမွန်နေခြင်း။",
+      descEn: "Strong, enduring trust developed with long-term customers and robust connections."
+    },
+    {
+      type: "weakness",
+      titleMm: "လုပ်ငန်းလည်ပတ်ငွေ ကန့်သတ်ချက်",
+      titleEn: "Cashflow Limitations",
+      descMm: "ဖောက်သည်များအား အကြွေးဝယ်ယူခွင့် ပေးရန် အရင်းအနှီး လိုအပ်နေခြင်း။",
+      descEn: "Limited capital reserves to offer flexible credit options to wholesale buyers."
+    },
+    {
+      type: "opportunity",
+      titleMm: "လက်ကားဝယ်ယူသူများအား ပစ်မှတ်ထားခြင်း",
+      titleEn: "Wholesale Expansion",
+      descMm: "Viber မှတဆင့် လက်ကားဖောက်သည်များအား အထူးလျှော့ဈေးပေးခြင်း။",
+      descEn: "Targeting wholesale buyers with volume discounts via direct Viber channels."
+    },
+    {
+      type: "threat",
+      titleMm: "ပြိုင်ဘက်များ၏ အကြွေးပေးစနစ်",
+      titleEn: "Competitor Credit Terms",
+      descMm: "ပြိုင်ဘက်ဆိုင်များမှ ကာလရှည်အကြွေးဝယ်ယူခွင့် (Credit Extensions) ပေးအပ်လာခြင်း။",
+      descEn: "Aggressive credit extensions and pricing campaigns launched by rival stores."
+    }
+  ],
+  customerWeekly: [
+    { dayMm: 'တနင်္လာ', dayEn: 'Mon', count: 45 },
+    { dayMm: 'အင်္ဂါ', dayEn: 'Tue', count: 52 },
+    { dayMm: 'ဗုဒ္ဓဟူး', dayEn: 'Wed', count: 38 },
+    { dayMm: 'ကြာသပတေး', dayEn: 'Thu', count: 61 },
+    { dayMm: 'သောကြာ', dayEn: 'Fri', count: 58 },
+    { dayMm: 'စနေ', dayEn: 'Sat', count: 72 },
+    { dayMm: 'တနင်္ဂနွေ', dayEn: 'Sun', count: 34 }
+  ],
+  financialWeekly: [
+    { dayMm: 'တနင်္လာ', dayEn: 'Mon', income: 850, profit: 320, average: 580 },
+    { dayMm: 'အင်္ဂါ', dayEn: 'Tue', income: 920, profit: 380, average: 600 },
+    { dayMm: 'ဗုဒ္ဓဟူး', dayEn: 'Wed', income: 680, profit: 210, average: 560 },
+    { dayMm: 'ကြာသပတေး', dayEn: 'Thu', income: 1050, profit: 450, average: 620 },
+    { dayMm: 'သောကြာ', dayEn: 'Fri', income: 980, profit: 410, average: 630 },
+    { dayMm: 'စနေ', dayEn: 'Sat', income: 1200, profit: 520, average: 660 },
+    { dayMm: 'တနင်္ဂနွေ', dayEn: 'Sun', income: 550, profit: 180, average: 610 }
+  ],
+  recommendations: [
+    {
+      id: "promo",
+      titleMm: "အရောင်းမြှင့်တင်ရေး",
+      titleEn: "Promotions",
+      descMm: "ရောင်းအားပမာဏ ကျဆင်းမသွားစေရန်နှင့် လက်ရှိဖောက်သည်များကို ဆက်လက်ထိန်းသိမ်းထားရန် ကုန်ပစ္စည်းအချို့တွင် ကန့်သတ်ကာလတို လျှော့ဈေးများ ပြုလုပ်ပါ။",
+      descEn: "Launch short-term limited discounts on selected items to retain existing loyal customers and prevent volume drops.",
+      iconName: "Sparkles"
+    },
+    {
+      id: "stock",
+      titleMm: "ကုန်ပစ္စည်းမဟာဗျူဟာ",
+      titleEn: "Stock Strategy",
+      descMm: "သိုလှောင်ရုံတွင် ကုန်ပစ္စည်းသက်တမ်း ကြာမြင့်နေသော ကုန်ပစ္စည်းများကို အရောင်းရဆုံးကုန်ပစ္စည်းများနှင့် တွဲဖက်၍ ရောင်းချခြင်း (Bundling) ပြုလုပ်ပါ။",
+      descEn: "Bundle slow-moving aged warehouse inventory with your fastest-selling products to accelerate turnover.",
+      iconName: "ShoppingBag"
+    },
+    {
+      id: "pricing",
+      titleMm: "ဈေးနှုန်းနှင့် ငွေပေးချေမှု",
+      titleEn: "Pricing & Payments",
+      descMm: "ဈေးနှုန်းကို ပြိုင်ဘက်ဆိုင်များနှင့် တူညီစွာ ထားရှိသော်လည်း အကြွေးပေးချေမှု သက်တမ်းကို တိုတောင်းအောင် ညှိနှိုင်းပါ။",
+      descEn: "Match local retail prices but aggressively negotiate shorter credit payment cycles with buyers.",
+      iconName: "Activity"
+    },
+    {
+      id: "growth",
+      titleMm: "တန်ဖိုးမြင့် ဖောက်သည်များ",
+      titleEn: "High-Value Customers",
+      descMm: "ဝယ်ယူမှုအများဆုံး VIP ဖောက်သည်များအတွက် ကုန်ပစ္စည်းအသစ်များကို ဦးစားပေးဝယ်ယူခွင့်နှင့် အထူးလျှော့ဈေးများကို Viber အုပ်စုတွင် သီးသန့်စီစဉ်ပေးပါ။",
+      descEn: "Provide exclusive early product access and highly customized VIP discounts within private Viber groups.",
+      iconName: "TrendingUp"
+    }
+  ]
+};

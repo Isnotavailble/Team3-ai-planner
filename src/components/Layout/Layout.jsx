@@ -3,8 +3,9 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, User, Plus, Sparkles, ChevronDown } from 'lucide-react';
 import { mockHistories } from '../../data/mockHistories';
+import logo from '../../assets/logo.png';
 
-export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, language = 'mm' }) {
+export default function Layout({ language = 'mm' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isOnboarding = location.pathname === '/';
@@ -24,11 +25,11 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, language
         }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center"
-            style={{ background: 'var(--text-primary)' }}
-          >
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
+          <img 
+            src={logo} 
+            alt="Strivo Logo" 
+            style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '6px' }} 
+          />
           <div className="flex items-center relative">
             <span className="font-bold text-base" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
               Strivo
@@ -55,19 +56,6 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, language
           </div>
         ) : (
           <div className="flex items-center gap-3">
-
-            <button
-              onClick={() => setIsGlobalChatOpen(!isGlobalChatOpen)}
-              className="flex items-center gap-1.5 rounded-md cursor-pointer text-xs font-medium transition-all"
-              style={{
-                background: isGlobalChatOpen ? 'var(--surface-active)' : 'transparent', 
-                border: '1px solid var(--border-default)',
-                height: '32px', padding: '0 12px', 
-                color: isGlobalChatOpen ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              <Sparkles size={12} className={isGlobalChatOpen ? 'text-txt-primary' : ''} /> {language === 'mm' ? "AI မေးမြန်းရန်" : "Ask AI"}
-            </button>
 
             <button
               onClick={() => navigate('/')}

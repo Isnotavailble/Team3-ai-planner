@@ -6,10 +6,8 @@ import Layout from './components/Layout/Layout';
 import WorkspaceLayout from './components/Workspace/WorkspaceLayout';
 import DashboardPage from './components/Dashboard/DashboardPage';
 import ReportsView from './components/Dashboard/ReportsView';
-import GoalsView from './components/Dashboard/GoalsView';
 import AnalyticsView from './components/Dashboard/AnalyticsView';
 import ProfileView from './components/Dashboard/ProfileView';
-import DirectoryView from './components/Dashboard/DirectoryView';
 import { mockHistories } from './data/mockHistories';
 
 export default function App() {
@@ -28,6 +26,7 @@ export default function App() {
   });
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [baseInsights, setBaseInsights] = useState(null);
 
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
@@ -44,10 +43,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
-  const [globalChatAgents, setGlobalChatAgents] = useState([]);
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
-
   const navigate = useNavigate();
 
   // Fetch workspace data on mount and when businessProfile updates
@@ -57,6 +52,8 @@ export default function App() {
       setBaseWorkspace(data);
       const dData = await api.getDashboardData(businessProfile, language);
       setDashboardData(dData);
+      const insights = await api.getInsights(businessProfile, language);
+      setBaseInsights(insights);
     }
     load();
   }, [businessProfile, language]);
@@ -88,24 +85,10 @@ export default function App() {
     navigate('/workspace');
   };
 
-  const handleSelectNode = useCallback((id) => {
-    setSelectedNodeId(id);
-    navigate('/workspace/drilldown');
-  }, [navigate]);
-
-  const handleStartInterrogation = useCallback((agentsList) => {
-    setGlobalChatAgents(agentsList);
-    setIsGlobalChatOpen(true);
-  }, [setGlobalChatAgents, setIsGlobalChatOpen]);
-
   return (
     <Routes>
       <Route element={
-        <Layout 
-          isGlobalChatOpen={isGlobalChatOpen} 
-          setIsGlobalChatOpen={setIsGlobalChatOpen} 
-          language={language}
-        />
+        <Layout language={language} />
       }>
         <Route path="/" element={
           <Onboarding 
@@ -119,13 +102,6 @@ export default function App() {
           <WorkspaceLayout 
             workspace={workspace} 
             isHistoryLoading={isHistoryLoading}
-            isGlobalChatOpen={isGlobalChatOpen}
-            setIsGlobalChatOpen={setIsGlobalChatOpen}
-            globalChatAgents={globalChatAgents}
-            setGlobalChatAgents={setGlobalChatAgents}
-            selectedNodeId={selectedNodeId}
-            setSelectedNodeId={setSelectedNodeId}
-            handleSelectNode={handleSelectNode}
             language={language}
           />
         }>
@@ -134,20 +110,6 @@ export default function App() {
               workspace={workspace} 
               businessProfile={businessProfile} 
               dashboardData={dashboardData}
-              selectedNodeId={selectedNodeId}
-              handleSelectNode={handleSelectNode}
-              language={language}
-            />
-          } />
-          
-          {/* Workspace node drilldown page */}
-          <Route path="drilldown" element={
-            <DashboardPage 
-              workspace={workspace} 
-              businessProfile={businessProfile} 
-              dashboardData={dashboardData}
-              selectedNodeId={selectedNodeId}
-              handleSelectNode={handleSelectNode}
               language={language}
             />
           } />
@@ -161,23 +123,14 @@ export default function App() {
             />
           } />
 
-          {/* Goals & Budget sub-page */}
-          <Route path="goals" element={
-            <GoalsView 
-              workspace={workspace} 
-              businessProfile={businessProfile} 
-              setBusinessProfile={setBusinessProfile}
-              language={language}
-            />
-          } />
-
-          {/* Analytics & Prediction simulation sub-page */}
+          {/* Analytics sub-page */}
           <Route path="analytics" element={
             <AnalyticsView 
               workspace={workspace}
               businessProfile={businessProfile} 
-              onStartInterrogation={handleStartInterrogation}
               language={language}
+              baseInsights={baseInsights}
+              setBaseInsights={setBaseInsights}
             />
           } />
 
@@ -189,15 +142,6 @@ export default function App() {
               setBusinessProfile={setBusinessProfile}
               language={language}
               setLanguage={setLanguage}
-            />
-          } />
-
-          {/* Directory sub-page */}
-          <Route path="directory" element={
-            <DirectoryView 
-              businessProfile={businessProfile} 
-              setBusinessProfile={setBusinessProfile}
-              language={language}
             />
           } />
         </Route>

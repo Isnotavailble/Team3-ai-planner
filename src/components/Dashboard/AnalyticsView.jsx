@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Play, Cpu, Sparkles, TrendingUp, Users, ShieldAlert, FileText, Activity, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { translations } from '../../data/translations';
 import api from '../../services/api';
 import SimulationSkeleton from '../AIReportPage/SimulationSkeleton';
 
-export default function AnalyticsView({ workspace = {}, businessProfile = {}, onStartInterrogation, language = 'mm' }) {
+export default function AnalyticsView({ 
+  workspace = {}, 
+  businessProfile = {}, 
+  onStartInterrogation, 
+  language = 'mm',
+  baseInsights: propBaseInsights,
+  setBaseInsights: propSetBaseInsights
+}) {
   const t = translations[language];
   const [stage, setStage] = useState('setup'); // 'setup' | 'running' | 'results'
   const [logs, setLogs] = useState([]);
@@ -26,6 +33,22 @@ export default function AnalyticsView({ workspace = {}, businessProfile = {}, on
 
   const [simulationData, setSimulationData] = useState([]);
   const [verdictData, setVerdictData] = useState(null);
+  const [localBaseInsights, setLocalBaseInsights] = useState(null);
+  const baseInsights = propBaseInsights !== undefined ? propBaseInsights : localBaseInsights;
+  const setBaseInsights = propSetBaseInsights !== undefined ? propSetBaseInsights : setLocalBaseInsights;
+
+  useEffect(() => {
+    if (propBaseInsights !== undefined) return;
+    async function loadInsights() {
+      try {
+        const insights = await api.getInsights(businessProfile, language);
+        setLocalBaseInsights(insights);
+      } catch (err) {
+        console.error("Failed to fetch insights", err);
+      }
+    }
+    loadInsights();
+  }, [businessProfile, language, propBaseInsights]);
 
   // Toggles for the 5 projection lines
   const [visibleLines, setVisibleLines] = useState({
@@ -38,19 +61,6 @@ export default function AnalyticsView({ workspace = {}, businessProfile = {}, on
 
   const hasRivals = businessProfile?.rivals && businessProfile.rivals.length > 0;
 
-  // Mock static charts data
-  const acquisitionData = [
-    { name: 'Viber', value: 45 },
-    { name: 'Telegram', value: 30 },
-    { name: 'Walk-in', value: 20 },
-    { name: 'Referral', value: 5 }
-  ];
-
-  const segmentData = [
-    { name: 'Regulars', value: 60 },
-    { name: 'Occasional', value: 25 },
-    { name: 'One-timers', value: 15 }
-  ];
 
   const runSimulation = async () => {
     setStage('running');
@@ -276,451 +286,447 @@ export default function AnalyticsView({ workspace = {}, businessProfile = {}, on
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
-      {/* HEADER */}
-      <header>
-        <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {t.analyticsTitle}
-        </h1>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-          {language === 'mm' ? "စက်မှုဥာဏ်ရည်သုံး စျေးကွက်ခန့်မှန်းချက်များနှင့် မဟာဗျူဟာအကြံပြုချက်များ" : "Swarm intelligence simulation & business projections"}
-        </p>
-      </header>
-
-      {/* 1. STRATEGIC KPI GRID (2x2) */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-        {[
-          { 
-            label: t.activeCustomers, 
-            val: "184", 
-            icon: Users,
-            color: 'var(--positive)',
-            trend: language === 'mm' ? '+၅.၂% တိုးလာသည်' : '+5.2% growth'
-          },
-          { 
-            label: t.totalConnections, 
-            val: "34", 
-            icon: Activity,
-            color: 'var(--accent)',
-            trend: language === 'mm' ? 'လည်ပတ်နေသည်' : 'Active'
-          },
-          { 
-            label: t.competitiveSignals, 
-            val: "8", 
-            icon: ShieldAlert,
-            color: 'var(--critical)',
-            trend: language === 'mm' ? '၂ ခု သတိပေးချက်' : '2 alerts'
-          },
-          { 
-            label: t.intelligenceSources, 
-            val: "12", 
-            icon: FileText,
-            color: 'var(--caution)',
-            trend: language === 'mm' ? '၁၀၀% စင့်ခ်ဖြစ်သည်' : '100% synced'
-          }
-        ].map((item, idx) => (
-          <div 
-            key={idx}
-            style={{
-              background: 'var(--bg-surface)', 
-              border: '1px solid var(--border-default)',
-              borderRadius: '16px', 
-              padding: '16px 20px', 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.01)'
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                {item.label}
-              </span>
-              <div className="font-number" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-                {item.val}
-              </div>
-              <span style={{ fontSize: '10px', color: item.color, fontWeight: 500 }}>
-                {item.trend}
-              </span>
-            </div>
-            <div style={{
-              color: item.color,
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              border: '1px solid var(--border-default)',
-              flexShrink: 0
-            }}>
-              <item.icon size={18} />
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* 2. MAIN PREDICTIVE SIMULATION PANEL */}
-      <section style={{
-        background: 'var(--bg-surface)', borderRadius: '24px',
-        border: '1px solid var(--border-default)', padding: '24px',
-        display: 'flex', flexDirection: 'column', gap: '24px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
-      }}>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border-default)', paddingBottom: '16px' }}>
-          <Cpu size={20} style={{ color: 'var(--accent)' }} />
-          <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {language === 'mm' ? "AI စျေးကွက်အသွင်တူဆန်းစစ်ချက် မော်ဒယ်" : "AI Swarm Predictive Simulation"}
-            </h3>
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              {language === 'mm' ? "စျေးကွက်အခြေအနေများပြောင်းလဲပြီး ၆ လပတ် အရောင်းရလဒ်များကို ခန့်မှန်းကြည့်ပါ" : "Simulate forecast models based on market parameters"}
+      {baseInsights ? (
+        <>
+          {/* HEADER */}
+          <header>
+            <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {t.analyticsTitle}
+            </h1>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              {language === 'mm' ? "စက်မှုဥာဏ်ရည်သုံး စျေးကွက်ခန့်မှန်းချက်များနှင့် မဟာဗျူဟာအကြံပြုချက်များ" : "Swarm intelligence simulation & business projections"}
             </p>
-          </div>
-        </div>
+          </header>
 
-        {error && (
-          <div style={{ background: 'rgba(163, 61, 92, 0.1)', color: 'var(--critical)', padding: '12px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
+          {/* 1. COMPACT KPI HERO */}
+          <section style={{ 
+            background: 'var(--bg-surface)', borderRadius: '24px',
+            border: '1px solid var(--border-default)', padding: '24px 32px',
+            display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+          }}>
+            {[
+              { 
+                label: language === 'mm' ? "တိုးတက်မှု အမှတ်" : "Growth Score", 
+                val: baseInsights.growthScore
+              },
+              { 
+                label: language === 'mm' ? "ဈေးကွက် အမှတ်" : "Market Score", 
+                val: baseInsights.marketScore
+              },
+              { 
+                label: language === 'mm' ? "အန္တရာယ် အခြေအနေ" : "Risk Level", 
+                val: baseInsights.riskCard.level.charAt(0).toUpperCase() + baseInsights.riskCard.level.slice(1)
+              }
+            ].map((stat, idx, arr) => (
+              <div key={idx} style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                  marginRight: idx < arr.length - 1 ? '12px' : '0'
+                }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.label}</span>
+                  <span className="font-number" style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-primary)' }}>{stat.val}</span>
+                </div>
+            ))}
+          </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '28px', alignItems: 'start' }}>
-          
-          {/* Setup Configuration Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h4 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
-              {t.marketConditions}
-            </h4>
-
-
-            {/* Slider 1: Competitors */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{t.competitorAggressive}</span>
-                <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.competitors}%</span>
+          {/* 2. WEEKLY PREDICTION GRAPHS */}
+          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+            {/* Customer Activity — 7 Day */}
+            <div style={{
+              background: 'var(--bg-surface)', borderRadius: '24px',
+              padding: '24px', border: '1px solid var(--border-default)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
+              display: 'flex', flexDirection: 'column', gap: '16px'
+            }}>
+              <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                {language === 'mm' ? 'ဖောက်သည် ခန့်မှန်းချက် (၇ ရက်)' : 'Customer forecast (7-day)'}
+              </h3>
+              <div style={{ width: '100%', height: '180px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={baseInsights.customerWeekly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(value) => `${value} ${language === 'mm' ? 'ဦး' : 'customers'}`} />
+                    <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <input
-                type="range" min="10" max="100" value={ratios.competitors}
-                onChange={e => setRatios({ ...ratios, competitors: parseInt(e.target.value) })}
-                disabled={stage === 'running'}
-                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
             </div>
-
-            {/* Slider 2: Retailer Engagement */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{t.retailerEngagement}</span>
-                <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.customers}%</span>
+            
+            {/* Financial Health — 7 Day */}
+            <div style={{
+              background: 'var(--bg-surface)', borderRadius: '24px',
+              padding: '24px', border: '1px solid var(--border-default)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
+              display: 'flex', flexDirection: 'column', gap: '16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  {language === 'mm' ? 'ငွေကြေးကျန်းမာရေး (၇ ရက်)' : 'Financial health (7-day)'}
+                </h3>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {[
+                    { label: language === 'mm' ? 'ဝင်ငွေ' : 'Income', color: 'var(--accent)' },
+                    { label: language === 'mm' ? 'အမြတ်' : 'Profit', color: 'var(--positive)' },
+                    { label: language === 'mm' ? 'ပျမ်းမျှ' : 'Avg', color: 'var(--caution)' }
+                  ].map(l => (
+                    <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ width: '8px', height: '3px', borderRadius: '2px', background: l.color }}></div>
+                      <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{l.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <input
-                type="range" min="10" max="100" value={ratios.customers}
-                onChange={e => setRatios({ ...ratios, customers: parseInt(e.target.value) })}
-                disabled={stage === 'running'}
-                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
+              <div style={{ width: '100%', height: '180px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={baseInsights.financialWeekly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(value) => `${value.toLocaleString()}k MMK`} />
+                    <Line type="monotone" dataKey="income" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3 }} name={language === 'mm' ? 'ဝင်ငွေ' : 'Income'} />
+                    <Line type="monotone" dataKey="profit" stroke="var(--positive)" strokeWidth={2} dot={{ r: 3 }} name={language === 'mm' ? 'အမြတ်' : 'Profit'} />
+                    <Line type="monotone" dataKey="average" stroke="var(--caution)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} name={language === 'mm' ? 'ပျမ်းမျှ' : 'Average'} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
+          </section>
 
-            {/* Slider 3: Supply capacity */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{t.supplyCapacity}</span>
-                <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.distributors}%</span>
-              </div>
-              <input
-                type="range" min="10" max="100" value={ratios.distributors}
-                onChange={e => setRatios({ ...ratios, distributors: parseInt(e.target.value) })}
-                disabled={stage === 'running'}
-                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
-            </div>
-
-            {stage !== 'running' && (
-              <button
-                onClick={runSimulation}
-                style={{
-                  background: 'var(--accent)', color: '#fff', border: 'none',
-                  padding: '10px 16px', borderRadius: '8px', cursor: 'pointer',
-                  fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                }}
-              >
-                <Play size={12} fill="currentColor" /> {t.runSimulationBtn}
-              </button>
-            )}
-
-            {stage === 'running' && (
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'center', padding: '10px' }}>
-                {language === 'mm' ? "စနစ်တွက်ချက်မှုများ ပြုလုပ်နေသည်..." : "Simulating swarm model..."}
-              </div>
-            )}
-          </div>
-
-          {/* Chart & Suggestion Output Column */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {stage === 'setup' && (
-              <div style={{
-                height: '420px', border: '1.5px dashed var(--border-default)', borderRadius: '16px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)'
-              }}>
-                <Cpu size={32} style={{ color: 'var(--text-tertiary)', marginBottom: '12px' }} />
-                <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  {language === 'mm' ? "ခန့်မှန်းတွက်ချက်ရန် အချက်အလက်များ အသင့်ရှိပါသည်" : "Simulation Model Ready"}
-                </h4>
-                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', maxWidth: '300px', marginTop: '6px' }}>
-                  {language === 'mm' ? "သတ်မှတ်ချက်များကို ချိန်ညှိပြီး 'ခန့်မှန်းချက် တွက်ချက်မည်' ကို နှိပ်ပါ" : "Adjust conditions on the left pane and initialize simulation graph."}
+          {/* 3. MAIN PREDICTIVE SIMULATION PANEL */}
+          <section style={{
+            background: 'var(--bg-surface)', borderRadius: '24px',
+            border: '1px solid var(--border-default)', padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+          }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid var(--border-default)', paddingBottom: '16px' }}>
+              <Cpu size={20} style={{ color: 'var(--accent)' }} />
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {language === 'mm' ? "AI စျေးကွက်အသွင်တူဆန်းစစ်ချက် မော်ဒယ်" : "AI Swarm Predictive Simulation"}
+                </h3>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {language === 'mm' ? "စျေးကွက်အခြေအနေများပြောင်းလဲပြီး ၆ လပတ် အရောင်းရလဒ်များကို ခန့်မှန်းကြည့်ပါ" : "Simulate forecast models based on market parameters"}
                 </p>
               </div>
-            )}
+            </div>
 
-            {stage === 'running' && (
-              <div style={{ width: '100%', overflow: 'hidden' }}>
-                <SimulationSkeleton showCards={false} />
+            {error && (
+              <div style={{ background: 'rgba(163, 61, 92, 0.1)', color: 'var(--critical)', padding: '12px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
+                {error}
               </div>
             )}
 
-            {stage === 'results' && (
-              <div className="space-y-6 animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                
-                {/* 1. DYNAMIC AI SUGGESTION TEXT BLOCK */}
-                <div style={{
-                  background: 'var(--bg-gradient-1)', border: '1px solid var(--border-default)',
-                  borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-                      <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                        {language === 'mm' ? 'AI ခွဲခြမ်းစိတ်ဖြာချက် အကျဉ်းချုပ်' : 'Overview of AI Graph Analysis'}
-                      </span>
-                    </div>
-                    
-                    <button
-                      onClick={() => onStartInterrogation(verdictData.criticalAgents)}
-                      style={{
-                        background: 'var(--accent)', color: '#fff', border: 'none',
-                        padding: '6px 12px', borderRadius: '6px', fontSize: '11px',
-                        fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
-                      }}
-                    >
-                      <Sparkles size={10} /> {t.consultAgentsBtn}
-                    </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '28px', alignItems: 'start' }}>
+              
+              {/* Setup Configuration Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h4 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
+                  {t.marketConditions}
+                </h4>
+
+                {/* Slider 1: Competitors */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t.competitorAggressive}</span>
+                    <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.competitors}%</span>
                   </div>
-                  <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                    {verdictData.verdict}
-                  </p>
+                  <input
+                    type="range" min="10" max="100" value={ratios.competitors}
+                    onChange={e => setRatios({ ...ratios, competitors: parseInt(e.target.value) })}
+                    disabled={stage === 'running'}
+                    style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                  />
                 </div>
 
-                {/* 2. 5-LINE PROJECTION CHART */}
-                <div style={{ border: '1px solid var(--border-default)', borderRadius: '16px', padding: '20px', background: 'var(--bg-surface)' }}>
-                  <div style={{ height: '220px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={simulationData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                        <Tooltip />
-                        
-                        {visibleLines.profit && <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} name="Net Profit (MMK)" dot={{ r: 3 }} />}
-                        {visibleLines.revenue && <Line type="monotone" dataKey="revenue" stroke="#0284c7" strokeWidth={1.5} name="Revenue (MMK)" dot={{ r: 2 }} />}
-                        {visibleLines.expenses && <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={1.5} name="Expenses (MMK)" dot={{ r: 2 }} />}
-                        {visibleLines.customers && <Line type="monotone" dataKey="customers" stroke="#8b5cf6" strokeWidth={1.5} name="Customers" dot={{ r: 2 }} />}
-                      </LineChart>
-                    </ResponsiveContainer>
+                {/* Slider 2: Retailer Engagement */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t.retailerEngagement}</span>
+                    <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.customers}%</span>
                   </div>
-
-                  {/* 5-Line Checkboxes */}
-                  <div style={{
-                    display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center',
-                    paddingTop: '14px', borderTop: '1px solid var(--border-default)', marginTop: '12px'
-                  }}>
-                    {[
-                      { key: 'profit', label: language === 'mm' ? "အသားတင်အမြတ်" : "Net Profit", color: '#10b981' },
-                      { key: 'revenue', label: language === 'mm' ? "စုစုပေါင်းဝင်ငွေ" : "Revenue", color: '#0284c7' },
-                      { key: 'expenses', label: language === 'mm' ? "ကုန်ကျစရိတ်" : "Expenses", color: '#ef4444' },
-                      { key: 'customers', label: language === 'mm' ? "ဖောက်သည်ဦးရေ" : "Customers", color: '#8b5cf6' }
-                    ].map(item => (
-                      <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={visibleLines[item.key]}
-                          onChange={() => setVisibleLines(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                          style={{ accentColor: item.color, cursor: 'pointer' }}
-                        />
-                        {item.label}
-                      </label>
-                    ))}
-                  </div>
+                  <input
+                    type="range" min="10" max="100" value={ratios.customers}
+                    onChange={e => setRatios({ ...ratios, customers: parseInt(e.target.value) })}
+                    disabled={stage === 'running'}
+                    style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                  />
                 </div>
 
-              </div>
-            )}
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* 3. 4 MAJOR AI SUGGESTION CARDS GRID (rendered outside the simulation panel) */}
-      {stage === 'running' && (
-        <div className="animate-fade-in" style={{ width: '100%' }}>
-          <SimulationSkeleton showGraph={false} />
-        </div>
-      )}
-
-      {stage === 'results' && (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-          {verdictData.aiInsights?.map((insight) => {
-            const IconComponent = insight.icon;
-            const isExpanded = expandedCardId === insight.id;
-            return (
-              <div key={insight.id} className="ai-suggestion-card" style={{
-                background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-                borderRadius: '16px', display: 'flex', flexDirection: 'column',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.02)', overflow: 'hidden'
-              }}>
-                {/* Header Bar */}
-                <div 
-                  onClick={() => {
-                    setExpandedCardId(isExpanded ? null : insight.id);
-                    setExpandedBlockIdx(null);
-                  }}
-                  style={{ 
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    padding: '20px 24px', cursor: 'pointer', userSelect: 'none',
-                    background: isExpanded ? 'var(--bg-elevated)' : 'transparent',
-                    borderBottom: isExpanded ? '1px solid var(--border-default)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <IconComponent size={20} style={{ color: 'var(--text-primary)', opacity: 0.8 }} />
-                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {insight.title}
-                    </h3>
+                {/* Slider 3: Supply capacity */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t.supplyCapacity}</span>
+                    <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{ratios.distributors}%</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span className="mono" style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '3px 8px', borderRadius: '12px', border: '1px solid var(--border-default)' }}>
-                      {language === 'mm' ? '၄ ချက်' : '4 Insights'}
-                    </span>
-                    <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </div>
+                  <input
+                    type="range" min="10" max="100" value={ratios.distributors}
+                    onChange={e => setRatios({ ...ratios, distributors: parseInt(e.target.value) })}
+                    disabled={stage === 'running'}
+                    style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                  />
                 </div>
-                {/* Collapsible Content - Insight Blocks */}
-                {isExpanded && (
-                  <div style={{ padding: '24px' }} className="animate-fade-in">
-                    {expandedBlockIdx === null ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        {insight.blocks.map((block, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedBlockIdx(idx);
-                            }}
-                            style={{
-                              background: 'var(--bg-base)', padding: '16px', borderRadius: '12px',
-                              border: '1px solid var(--border-default)', 
-                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                              cursor: 'pointer', userSelect: 'none', transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <div className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-primary)', fontWeight: 600 }}>
-                              {language === 'mm' ? `အချက် ${idx + 1}` : `Insight ${idx + 1}`}
-                            </div>
-                            <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
-                              <ChevronDown size={14} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="animate-fade-in" style={{
-                        background: 'var(--bg-base)', padding: '20px', borderRadius: '12px',
-                        border: '1px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: '16px'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--border-default)', paddingBottom: '12px' }}>
-                          <div className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600 }}>
-                            {language === 'mm' ? `အချက် ${expandedBlockIdx + 1}` : `Insight ${expandedBlockIdx + 1}`}
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedBlockIdx(null);
-                            }}
-                            style={{
-                              background: 'transparent', border: '1px solid var(--border-default)', padding: '6px 10px', borderRadius: '6px',
-                              fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', gap: '6px', transition: 'background 0.2s ease'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-surface)'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                          >
-                            {language === 'mm' ? 'ပိတ်ရန်' : 'Close'} <ChevronUp size={12} />
-                          </button>
-                        </div>
-                        <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
-                          {insight.blocks[expandedBlockIdx].desc}
-                        </p>
-                      </div>
-                    )}
+
+                {stage !== 'running' && (
+                  <button
+                    onClick={runSimulation}
+                    style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none',
+                      padding: '10px 16px', borderRadius: '8px', cursor: 'pointer',
+                      fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    <Play size={12} fill="currentColor" /> {t.runSimulationBtn}
+                  </button>
+                )}
+
+                {stage === 'running' && (
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'center', padding: '10px' }}>
+                    {language === 'mm' ? "စနစ်တွက်ချက်မှုများ ပြုလုပ်နေသည်..." : "Simulating swarm model..."}
                   </div>
                 )}
               </div>
-            );
-          })}
+
+              {/* Chart & Suggestion Output Column */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {stage === 'setup' && (
+                  <div style={{
+                    height: '420px', border: '1.5px dashed var(--border-default)', borderRadius: '16px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifycontent: 'center',
+                    textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)', justifyContent: 'center'
+                  }}>
+                    <Cpu size={32} style={{ color: 'var(--text-tertiary)', marginBottom: '12px' }} />
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      {language === 'mm' ? "ခန့်မှန်းတွက်ချက်ရန် အချက်အလက်များ အသင့်ရှိပါသည်" : "Simulation Model Ready"}
+                    </h4>
+                    <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', maxWidth: '300px', marginTop: '6px' }}>
+                      {language === 'mm' ? "သတ်မှတ်ချက်များကို ချိန်ညှိပြီး 'ခန့်မှန်းချက် တွက်ချက်မည်' ကို နှိပ်ပါ" : "Adjust conditions on the left pane and initialize simulation graph."}
+                    </p>
+                  </div>
+                )}
+
+                {stage === 'running' && (
+                  <div style={{ width: '100%', overflow: 'hidden' }}>
+                    <SimulationSkeleton showCards={false} />
+                  </div>
+                )}
+
+                {stage === 'results' && (
+                  <div className="space-y-6 animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* 1. DYNAMIC AI SUGGESTION TEXT BLOCK */}
+                    <div style={{
+                      background: 'var(--bg-gradient-1)', border: '1px solid var(--border-default)',
+                      borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Sparkles size={16} style={{ color: 'var(--accent)' }} />
+                          <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                            {language === 'mm' ? 'AI ခွဲခြမ်းစိတ်ဖြာချက် အကျဉ်းချုပ်' : 'Overview of AI Graph Analysis'}
+                          </span>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                        {verdictData.verdict}
+                      </p>
+                    </div>
+
+                    {/* 2. 5-LINE PROJECTION CHART */}
+                    <div style={{ border: '1px solid var(--border-default)', borderRadius: '16px', padding: '20px', background: 'var(--bg-surface)' }}>
+                      <div style={{ height: '220px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={simulationData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+                            <Tooltip />
+                            
+                            {visibleLines.profit && <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={2} name="Net Profit (MMK)" dot={{ r: 3 }} />}
+                            {visibleLines.revenue && <Line type="monotone" dataKey="revenue" stroke="#0284c7" strokeWidth={1.5} name="Revenue (MMK)" dot={{ r: 2 }} />}
+                            {visibleLines.expenses && <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={1.5} name="Expenses (MMK)" dot={{ r: 2 }} />}
+                            {visibleLines.customers && <Line type="monotone" dataKey="customers" stroke="#8b5cf6" strokeWidth={1.5} name="Customers" dot={{ r: 2 }} />}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* 5-Line Checkboxes */}
+                      <div style={{
+                        display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center',
+                        paddingTop: '14px', borderTop: '1px solid var(--border-default)', marginTop: '12px'
+                      }}>
+                        {[
+                          { key: 'profit', label: language === 'mm' ? "အသားတင်အမြတ်" : "Net Profit", color: '#10b981' },
+                          { key: 'revenue', label: language === 'mm' ? "စုစုပေါင်းဝင်ငွေ" : "Revenue", color: '#0284c7' },
+                          { key: 'expenses', label: language === 'mm' ? "ကုန်ကျစရိတ်" : "Expenses", color: '#ef4444' },
+                          { key: 'customers', label: language === 'mm' ? "ဖောက်သည်ဦးရေ" : "Customers", color: '#8b5cf6' }
+                        ].map(item => (
+                          <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={visibleLines[item.key]}
+                              onChange={() => setVisibleLines(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                              style={{ accentColor: item.color, cursor: 'pointer' }}
+                            />
+                            {item.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* 4. BASELINE AI INSIGHTS (SWOT & Recommendations - Card Model Style) */}
+          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
+            
+            {/* SWOT Card */}
+            <div style={{
+              background: 'var(--bg-surface)', borderRadius: '24px',
+              border: '1px solid var(--border-default)', padding: '24px',
+              display: 'flex', flexDirection: 'column', gap: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}>
+                <Lightbulb size={18} style={{ color: 'var(--text-primary)' }} />
+                <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {language === 'mm' ? 'SWOT သုံးသပ်ချက်' : 'SWOT Analysis'}
+                </h3>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {baseInsights.swot.map((item, idx) => {
+                  const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                  const isPositive = item.type === 'strength' || item.type === 'opportunity';
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isPositive ? 'var(--positive)' : 'var(--critical)' }}></div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {item.title}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                        {item.desc}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Recommendations Card */}
+            <div style={{
+              background: 'var(--bg-surface)', borderRadius: '24px',
+              border: '1px solid var(--border-default)', padding: '24px',
+              display: 'flex', flexDirection: 'column', gap: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}>
+                <Sparkles size={18} style={{ color: 'var(--text-primary)' }} />
+                <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {language === 'mm' ? 'AI အကြံပြုချက်များ' : 'AI Recommendations'}
+                </h3>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {baseInsights.recommendations.map((rec, idx) => (
+                  <div key={rec.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }}></div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        {language === 'mm' ? 'အကြံပြုချက် ' + (idx + 1) : 'Recommendation ' + (idx + 1)}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {rec.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      {rec.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          {/* Skeleton: Header */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="shimmer" style={{ width: '180px', height: '20px', borderRadius: '4px' }} />
+            <div className="shimmer" style={{ width: '300px', height: '12px', borderRadius: '3px' }} />
+          </div>
+
+          {/* Skeleton: KPI Hero Row */}
+          <div style={{
+            background: 'var(--bg-surface)', borderRadius: '24px',
+            border: '1px solid var(--border-default)', padding: '24px 32px',
+            display: 'flex', justifyContent: 'space-around', alignItems: 'center'
+          }}>
+            {[1,2,3].map(i => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div className="shimmer" style={{ width: '80px', height: '10px', borderRadius: '3px' }} />
+                <div className="shimmer" style={{ width: '48px', height: '26px', borderRadius: '4px' }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton: Two Weekly Graph Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {[1,2].map(i => (
+              <div key={i} style={{
+                background: 'var(--bg-surface)', borderRadius: '24px',
+                padding: '24px', border: '1px solid var(--border-default)',
+                display: 'flex', flexDirection: 'column', gap: '16px'
+              }}>
+                <div className="shimmer" style={{ width: '140px', height: '10px', borderRadius: '3px' }} />
+                <div className="shimmer" style={{ width: '100%', height: '180px', borderRadius: '8px' }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton: Simulation Panel Placeholder */}
+          <div style={{
+            background: 'var(--bg-surface)', borderRadius: '24px',
+            border: '1px solid var(--border-default)', padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: '16px'
+          }}>
+            <div className="shimmer" style={{ width: '200px', height: '12px', borderRadius: '3px' }} />
+            <div className="shimmer" style={{ width: '100%', height: '220px', borderRadius: '8px' }} />
+          </div>
+
+          {/* Skeleton: SWOT + Recommendations */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {[1,2].map(i => (
+              <div key={i} style={{
+                background: 'var(--bg-surface)', borderRadius: '24px',
+                padding: '24px', border: '1px solid var(--border-default)',
+                display: 'flex', flexDirection: 'column', gap: '12px'
+              }}>
+                <div className="shimmer" style={{ width: '120px', height: '10px', borderRadius: '3px' }} />
+                {[1,2,3].map(j => (
+                  <div key={j} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="shimmer" style={{ width: '100%', height: '10px', borderRadius: '3px' }} />
+                    <div className="shimmer" style={{ width: '85%', height: '10px', borderRadius: '3px' }} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
-
-      {/* 3. TWO COLUMN REGION: CHANNELS & SEGMENTS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        
-        {/* Customer Acquisition Channels */}
-        <div style={{
-          background: 'var(--bg-surface)', borderRadius: '20px',
-          padding: '24px', border: '1px solid var(--border-default)'
-        }}>
-          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '16px' }}>
-            {t.channelsTitle}
-          </h3>
-          <div style={{ width: '100%', height: '180px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={acquisitionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value) => `${value}%`} />
-                <Bar dataKey="value" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Customer Segments Alignment */}
-        <div style={{
-          background: 'var(--bg-surface)', borderRadius: '20px',
-          padding: '24px', border: '1px solid var(--border-default)'
-        }}>
-          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '16px' }}>
-            {t.segmentsTitle}
-          </h3>
-          <div style={{ width: '100%', height: '180px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={segmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value) => `${value}%`} />
-                <Bar dataKey="value" fill="var(--entity-company)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-      </div>
 
     </div>
   );

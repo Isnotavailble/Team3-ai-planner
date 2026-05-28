@@ -286,7 +286,7 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
                       {language === 'mm' ? "ကုန်ပစ္စည်းလက်ကျန် အနည်းဆုံးသတ်မှတ်ချက် (Threshold)" : "Inventory Low Threshold"}
                     </label>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input type="number" value={inventoryLow} onChange={e => setInventoryLow(e.target.value)}
+                      <input type="number" min="0" step="1" required value={inventoryLow} onChange={e => setInventoryLow(e.target.value)}
                         style={{ width: '80px', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', outline: 'none', fontSize: '14px', background: 'var(--bg-base)' }} />
                       <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                         {language === 'mm' ? "ခုအောက်ရောက်ပါက အချက်ပေးရန်" : "items (alert when drops below this)"}
