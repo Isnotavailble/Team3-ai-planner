@@ -180,15 +180,13 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
           <div 
             className="flex-1 min-w-[280px]"
             style={{
-              background: 'var(--bg-gradient-1)',
-              borderRadius: '20px',
+              background: 'var(--bg-surface)',
+              borderRadius: '16px',
               padding: '20px',
               border: '1px solid var(--border-default)',
-              position: 'relative',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
             }}
           >
-            <Pin size={14} style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--accent)', opacity: 0.6 }} />
             <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
               {t.salesToday}
             </span>
@@ -198,10 +196,6 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               {language === 'mm' ? "ပျမ်းမျှ နေ့စဉ်ရောင်းအားပေါ် အခြေခံထားသည်" : "Calculated from daily averages"}
             </div>
-            {/* Sparkline track */}
-            <div style={{ width: '100%', height: '4px', background: 'rgba(107, 45, 123, 0.1)', borderRadius: '2px', marginTop: '16px', overflow: 'hidden' }}>
-              <div style={{ width: '68%', height: '100%', background: 'var(--accent)' }} />
-            </div>
           </div>
 
           {/* Card 2: Receivables */}
@@ -209,13 +203,12 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
             className="flex-1 min-w-[280px]"
             style={{
               background: 'var(--bg-surface)',
-              borderRadius: '20px',
+              borderRadius: '16px',
               padding: '20px',
               border: '1px solid var(--border-default)',
-              position: 'relative'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
             }}
           >
-            <Pin size={14} style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-tertiary)' }} />
             <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
               {t.outstandingReceivables}
             </span>
@@ -225,10 +218,6 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               <span style={{ color: 'var(--caution)', fontWeight: 600 }}>{language === 'mm' ? "၂ ဆိုင် ကျန်ရှိနေသည်" : "2 invoices outstanding"}</span>
             </div>
-            {/* Sparkline track */}
-            <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', marginTop: '16px', overflow: 'hidden' }}>
-              <div style={{ width: '40%', height: '100%', background: 'var(--caution)' }} />
-            </div>
           </div>
 
           {/* Card 3: Weekly Profit */}
@@ -236,13 +225,12 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
             className="flex-1 min-w-[280px]"
             style={{
               background: 'var(--bg-surface)',
-              borderRadius: '20px',
+              borderRadius: '16px',
               padding: '20px',
               border: '1px solid var(--border-default)',
-              position: 'relative'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
             }}
           >
-            <Pin size={14} style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-tertiary)' }} />
             <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
               {t.weeklyProfit}
             </span>
@@ -252,23 +240,13 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               <span style={{ color: 'var(--positive)', fontWeight: 600 }}>+8.2% {language === 'mm' ? "တိုးတက်လာသည်" : "increase this week"}</span>
             </div>
-            {/* Sparkline track */}
-            <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', marginTop: '16px', overflow: 'hidden' }}>
-              <div style={{ width: '75%', height: '100%', background: 'var(--positive)' }} />
-            </div>
           </div>
 
         </div>
       </section>
 
       {/* 3. WEEK STRIP GRID */}
-      <section style={{
-        background: 'var(--bg-elevated)',
-        borderTop: '1px solid var(--border-default)',
-        borderBottom: '1px solid var(--border-default)',
-        padding: '16px 24px',
-        borderRadius: '12px'
-      }}>
+      <section style={{ padding: '8px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
           <div>
             <span className="mono" style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>
@@ -367,12 +345,12 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
                   </span>
                   <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{prod.value}</span>
                 </div>
-                {/* Custom Gradient progress bar */}
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.03)', borderRadius: '3px', overflow: 'hidden' }}>
+                {/* Solid progress bar */}
+                <div style={{ width: '100%', height: '4px', background: 'var(--bg-elevated)', borderRadius: '2px', overflow: 'hidden' }}>
                   <div style={{
-                    width: `${prod.pct}%`, height: '100%',
-                    background: 'linear-gradient(90deg, var(--accent) 0%, rgba(184, 92, 142, 0.7) 100%)',
-                    borderRadius: '3px'
+                    width: `${prod.pct}%`,
+                    height: '100%',
+                    background: 'var(--accent)'
                   }} />
                 </div>
               </div>
