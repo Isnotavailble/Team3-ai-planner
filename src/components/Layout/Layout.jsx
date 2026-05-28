@@ -4,12 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, User, Plus, Sparkles, ChevronDown } from 'lucide-react';
 import { mockHistories } from '../../data/mockHistories';
 
-export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHistoryId, setActiveHistoryId, language = 'mm' }) {
+export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, language = 'mm' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isOnboarding = location.pathname === '/';
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const activeHistory = mockHistories.find(h => h.id === activeHistoryId);
 
   return (
     <div className="w-full h-screen flex flex-col overflow-hidden"
@@ -31,8 +29,7 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
           >
             <span className="text-white font-bold text-sm">S</span>
           </div>
-          <div className="flex items-center cursor-pointer relative" 
-                onClick={() => !isOnboarding && setIsDropdownOpen(!isDropdownOpen)}>
+          <div className="flex items-center relative">
             <span className="font-bold text-base" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
               Strivo
             </span>
@@ -41,37 +38,8 @@ export default function Layout({ isGlobalChatOpen, setIsGlobalChatOpen, activeHi
                 <span style={{ color: 'var(--border-dark)', marginLeft: '8px', marginRight: '8px' }}>/</span>
                 <span className="font-mono text-xs flex items-center gap-1 hover:text-txt-primary transition-colors" 
                       style={{ color: 'var(--text-secondary)' }}>
-                  {activeHistory?.name || 'workspace'} <ChevronDown size={14} />
+                  workspace
                 </span>
-                
-                {/* Popover Dropdown */}
-                <AnimatePresence>
-                  {isDropdownOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 mt-4 w-80 bg-surface-card rounded-xl border border-border shadow-lg overflow-hidden z-50 flex flex-col"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="p-3 border-b border-border-light bg-surface-panel/50">
-                        <span className="text-xs font-semibold text-txt-secondary uppercase tracking-wider">
-                          {language === 'mm' ? "စက်ရှင် မှတ်တမ်း" : "Session History"}
-                        </span>
-                      </div>
-                      <div className="p-2 space-y-1">
-                        {mockHistories.map(h => (
-                          <button key={h.id} 
-                            onClick={(e) => { e.stopPropagation(); setActiveHistoryId(h.id); setIsDropdownOpen(false); }}
-                            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center justify-between ${activeHistoryId === h.id ? 'bg-surface-active text-txt-primary font-medium' : 'hover:bg-surface-hover text-txt-secondary border-none cursor-pointer'}`}
-                            style={activeHistoryId === h.id ? {border: '1px solid var(--border-light)'} : {background:'transparent'}}
-                          >
-                            <span className="truncate pr-2" style={{color: 'inherit'}}>{h.name}</span>
-                            {activeHistoryId === h.id && <div className="w-2 h-2 rounded-full shrink-0" style={{background: 'var(--accent)'}} />}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </>
             )}
           </div>

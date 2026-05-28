@@ -26,9 +26,9 @@ export default function App() {
     materials: []
   });
 
-  const [activeHistoryId, setActiveHistoryId] = useState('current');
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
+  // Initialize with empty profile or default shape
   const [businessProfile, setBusinessProfile] = useState(
     mockHistories.find(h => h.id === 'current').profile
   );
@@ -38,14 +38,8 @@ export default function App() {
     const timer = setTimeout(() => {
       setIsHistoryLoading(false);
     }, 1000);
-
-    const history = mockHistories.find(h => h.id === activeHistoryId);
-    if (history) {
-      setBusinessProfile(history.profile);
-    }
-
     return () => clearTimeout(timer);
-  }, [activeHistoryId]);
+  }, []);
 
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [globalChatAgents, setGlobalChatAgents] = useState([]);
@@ -62,22 +56,15 @@ export default function App() {
     load();
   }, []);
 
-  // Compute dynamic workspace data for history simulation
+  // Compute dynamic workspace data (no longer split by activeHistoryId)
   useEffect(() => {
     if (!baseWorkspace.entities.length) return;
-
-    let sliceRatio = 1; // current
-    if (activeHistoryId === 'history1') sliceRatio = 0.6;
-    if (activeHistoryId === 'history2') sliceRatio = 0.35;
-
-    const sliceArr = (arr, ratio) => arr.slice(0, Math.max(1, Math.floor(arr.length * ratio)));
-
     setWorkspace({
-      entities: sliceArr(baseWorkspace.entities, sliceRatio),
-      edges: sliceArr(baseWorkspace.edges, sliceRatio),
-      materials: sliceArr(baseWorkspace.materials, sliceRatio)
+      entities: baseWorkspace.entities,
+      edges: baseWorkspace.edges,
+      materials: baseWorkspace.materials
     });
-  }, [activeHistoryId, baseWorkspace]);
+  }, [baseWorkspace]);
 
   const handleOnboardingComplete = (profile) => {
     setBusinessProfile(profile);
@@ -112,8 +99,6 @@ export default function App() {
         <Layout 
           isGlobalChatOpen={isGlobalChatOpen} 
           setIsGlobalChatOpen={setIsGlobalChatOpen} 
-          activeHistoryId={activeHistoryId} 
-          setActiveHistoryId={setActiveHistoryId} 
           language={language}
         />
       }>

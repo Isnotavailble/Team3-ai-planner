@@ -144,13 +144,13 @@ export default function GoalsView({ workspace = {}, businessProfile = {}, setBus
               />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
-                  type="number" required placeholder={language === 'mm' ? "ပန်းတိုင် ပမာဏ ($)" : "Target Amount ($)"}
+                  type="number" required placeholder={language === 'mm' ? "ပန်းတိုင် ပမာဏ (MMK)" : "Target Amount (MMK)"}
                   value={newGoalTarget} onChange={e => setNewGoalTarget(e.target.value)}
                   className="font-number"
                   style={{ flex: 1, height: '36px', padding: '0 10px', borderRadius: '8px', border: '1px solid var(--border-default)', fontSize: '12px', outline: 'none' }}
                 />
                 <input
-                  type="number" placeholder={language === 'mm' ? "လက်ရှိ စုဆောင်းငွေ ($)" : "Current Amount ($)"}
+                  type="number" placeholder={language === 'mm' ? "လက်ရှိ စုဆောင်းငွေ (MMK)" : "Current Amount (MMK)"}
                   value={newGoalCurrent} onChange={e => setNewGoalCurrent(e.target.value)}
                   className="font-number"
                   style={{ flex: 1, height: '36px', padding: '0 10px', borderRadius: '8px', border: '1px solid var(--border-default)', fontSize: '12px', outline: 'none' }}
@@ -210,10 +210,10 @@ export default function GoalsView({ workspace = {}, businessProfile = {}, setBus
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                       <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                        ${goal.current.toLocaleString()}
+                        {goal.current.toLocaleString()} MMK
                       </span>
                       <span className="font-number" style={{ color: 'var(--text-secondary)' }}>
-                        {t.targetLabel}: ${goal.target.toLocaleString()}
+                        {t.targetLabel}: {goal.target.toLocaleString()} MMK
                       </span>
                     </div>
                     {/* Custom progress track */}
@@ -264,13 +264,13 @@ export default function GoalsView({ workspace = {}, businessProfile = {}, setBus
               />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
-                  type="number" required placeholder={language === 'mm' ? "ဘတ်ဂျက် ကန့်သတ်ချက် ($)" : "Budget Limit ($)"}
+                  type="number" required placeholder={language === 'mm' ? "ဘတ်ဂျက် ကန့်သတ်ချက် (MMK)" : "Budget Limit (MMK)"}
                   value={newBudgetTarget} onChange={e => setNewBudgetTarget(e.target.value)}
                   className="font-number"
                   style={{ flex: 1, height: '36px', padding: '0 10px', borderRadius: '8px', border: '1px solid var(--border-default)', fontSize: '12px', outline: 'none' }}
                 />
                 <input
-                  type="number" placeholder={language === 'mm' ? "လက်ရှိ သုံးစွဲပြီးငွေ ($)" : "Spent So Far ($)"}
+                  type="number" placeholder={language === 'mm' ? "လက်ရှိ သုံးစွဲပြီးငွေ (MMK)" : "Spent So Far (MMK)"}
                   value={newBudgetSpent} onChange={e => setNewBudgetSpent(e.target.value)}
                   className="font-number"
                   style={{ flex: 1, height: '36px', padding: '0 10px', borderRadius: '8px', border: '1px solid var(--border-default)', fontSize: '12px', outline: 'none' }}
@@ -320,10 +320,10 @@ export default function GoalsView({ workspace = {}, businessProfile = {}, setBus
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                       <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                        ${budget.spent.toLocaleString()} / ${budget.limit.toLocaleString()}
+                        {budget.spent.toLocaleString()} / {budget.limit.toLocaleString()} MMK
                       </span>
                       <span className="mono" style={{ fontSize: '10px', color: isNearingLimit ? 'var(--caution)' : 'var(--text-secondary)' }}>
-                        {t.remainingLabel}: ${Math.max(0, budget.limit - budget.spent).toLocaleString()}
+                        {t.remainingLabel}: {Math.max(0, budget.limit - budget.spent).toLocaleString()} MMK
                       </span>
                     </div>
                     {/* Progress bar transitioning to terracotta past 80% */}

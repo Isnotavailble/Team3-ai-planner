@@ -71,39 +71,6 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Notifications Bell */}
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', cursor: 'pointer'
-          }}>
-            <Bell size={18} style={{ color: 'var(--text-secondary)' }} />
-            <div style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: 'var(--accent)', position: 'absolute',
-              top: '8px', right: '8px', border: '2px solid var(--bg-surface)'
-            }} />
-          </div>
-          
-          {/* Quick Profile Link */}
-          <div 
-            onClick={() => navigate('/workspace/profile')}
-            style={{
-              height: '36px', padding: '0 12px', borderRadius: '18px',
-              background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-              display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
-            }}
-          >
-            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={12} style={{ color: 'var(--accent)' }} />
-            </div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {businessProfile?.product || (language === 'mm' ? "လုပ်ငန်းစု" : "Strivo Profile")}
-            </span>
-          </div>
-        </div>
       </header>
 
       {/* 2. HERO PINNED CARDS STRIP */}
@@ -127,7 +94,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.salesToday}
             </span>
             <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              ${dailySales.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>{language === 'mm' ? "ကျပ်" : "USD"}</span>
+              {dailySales.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               {language === 'mm' ? "ပျမ်းမျှ နေ့စဉ်ရောင်းအားပေါ် အခြေခံထားသည်" : "Calculated from daily averages"}
@@ -154,7 +121,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.outstandingReceivables}
             </span>
             <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              $2,450 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>{language === 'mm' ? "ကျပ်" : "USD"}</span>
+              2,450 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               <span style={{ color: 'var(--caution)', fontWeight: 600 }}>{language === 'mm' ? "၂ ဆိုင် ကျန်ရှိနေသည်" : "2 invoices outstanding"}</span>
@@ -181,7 +148,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.weeklyProfit}
             </span>
             <div className="font-number" style={{ fontSize: '28px', color: 'var(--text-primary)', marginTop: '8px', fontWeight: 700 }}>
-              ${Math.round(netProfit / 4).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>{language === 'mm' ? "ကျပ်" : "USD"}</span>
+              {Math.round(netProfit / 4).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>MMK</span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
               <span style={{ color: 'var(--positive)', fontWeight: 600 }}>+8.2% {language === 'mm' ? "တိုးတက်လာသည်" : "increase this week"}</span>
@@ -209,7 +176,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.mtdRevenue}
             </span>
             <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              ${monthlySales.toLocaleString()}
+              {monthlySales.toLocaleString()} MMK
             </div>
           </div>
           <div>
@@ -217,7 +184,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.outstandingCash}
             </span>
             <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              $3,120
+              3,120 MMK
             </div>
           </div>
           <div>

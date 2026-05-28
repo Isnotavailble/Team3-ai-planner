@@ -41,10 +41,10 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
 
   // Transactions list
   const transactions = [
-    { type: 'income', descMm: "လက်လီ အရောင်းရငွေ", descEn: "Retail customer checkout", amount: "+$340", time: "1 hour ago" },
-    { type: 'expense', descMm: "ကုန်ပစ္စည်း သယ်ယူခ", descEn: "Supplier cargo transport fee", amount: "-$120", time: "3 hours ago" },
-    { type: 'income', descMm: "လက်ကား ရောင်းရငွေ", descEn: "Wholesale order payment", amount: "+$1,200", time: "5 hours ago" },
-    { type: 'expense', descMm: "စတိုးဆိုင် လျှပ်စစ်မီတာခ", descEn: "Shop electric utility bill", amount: "-$250", time: "Yesterday" }
+    { type: 'income', descMm: "လက်လီ အရောင်းရငွေ", descEn: "Retail customer checkout", amount: "+340 MMK", time: "1 hour ago" },
+    { type: 'expense', descMm: "ကုန်ပစ္စည်း သယ်ယူခ", descEn: "Supplier cargo transport fee", amount: "-120 MMK", time: "3 hours ago" },
+    { type: 'income', descMm: "လက်ကား ရောင်းရငွေ", descEn: "Wholesale order payment", amount: "+1,200 MMK", time: "5 hours ago" },
+    { type: 'expense', descMm: "စတိုးဆိုင် လျှပ်စစ်မီတာခ", descEn: "Shop electric utility bill", amount: "-250 MMK", time: "Yesterday" }
   ];
 
   return (
@@ -116,13 +116,13 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
                 {Math.round(progressRatio * 100)}%
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                {t.currentLabel}: ${monthlySales.toLocaleString()}
+                {t.currentLabel}: {monthlySales.toLocaleString()} MMK
               </span>
             </div>
           </div>
 
           <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {t.targetLabel}: <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${salesTarget.toLocaleString()}</span>
+            {t.targetLabel}: <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{salesTarget.toLocaleString()} MMK</span>
           </div>
 
           {/* Toggle Switches: Revenue / Expenses */}
@@ -183,7 +183,7 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
                       <Cell key={`cell-${idx}`} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `$${value}`} />
+                  <Tooltip formatter={(value) => `${value} MMK`} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -197,7 +197,7 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
                     <span style={{ color: 'var(--text-secondary)' }}>{item.name}</span>
                   </div>
                   <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                    ${item.value.toLocaleString()}
+                    {item.value.toLocaleString()} MMK
                   </span>
                 </div>
               ))}
@@ -251,7 +251,7 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value) => `$${value}`} />
+              <Tooltip formatter={(value) => `${value} MMK`} />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
               <Bar dataKey="Revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Target" fill="var(--text-tertiary)" opacity={0.3} radius={[4, 4, 0, 0]} />

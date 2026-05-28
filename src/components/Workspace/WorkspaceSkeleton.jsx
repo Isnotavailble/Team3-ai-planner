@@ -41,7 +41,7 @@ function PredictSetupSkeleton() {
 }
 
 export default function WorkspaceSkeleton({ pathname = '' }) {
-  if (pathname.includes('/predict')) {
+  if (pathname.includes('/predict') || pathname.includes('/analytics')) {
     return <PredictSetupSkeleton />;
   }
   return <DashboardSkeleton />;

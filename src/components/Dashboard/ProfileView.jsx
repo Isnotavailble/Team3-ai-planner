@@ -12,10 +12,15 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
   // Shortcuts directories modales
   const [showCustomersModal, setShowCustomersModal] = useState(false);
   const [showSuppliersModal, setShowSuppliersModal] = useState(false);
+  const [showAddMissingModal, setShowAddMissingModal] = useState(false);
+
+  // New Data Fields for Modal
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newSupplierName, setNewSupplierName] = useState('');
 
   // Filter entities for directories
-  const customers = workspace.entities?.filter(e => e.type === 'person' || e.type === 'segment') || [];
-  const suppliers = workspace.entities?.filter(e => e.type === 'company' || e.type === 'supplier') || [];
+  const customers = businessProfile?.customers || [];
+  const suppliers = businessProfile?.suppliers || [];
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -211,6 +216,29 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
         </div>
       </section>
 
+      {/* ADD MISSING DATA SECTION */}
+      <section className="space-y-4">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {language === 'mm' ? "ဒေတာဖြည့်စွက်ရန်" : "Data Management"}
+          </h3>
+        </div>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px dashed var(--border-default)',
+          borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center'
+        }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            {language === 'mm' ? "Onboarding တွင် ကျော်ခဲ့သော အချက်အလက်များကို ထပ်မံဖြည့်စွက်နိုင်ပါသည်။" : "Insert any data skipped during the onboarding setup."}
+          </span>
+          <button onClick={() => setShowAddMissingModal(true)} style={{
+            background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
+            padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+          }}>
+            {language === 'mm' ? "ဒေတာ အသစ်ထည့်မည်" : "Add Missing Data"}
+          </button>
+        </div>
+      </section>
+
       {/* EXIT & DATA */}
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
         <button style={{
@@ -288,11 +316,63 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
                 suppliers.map((s, idx) => (
                   <div key={idx} style={{ padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border-default)' }}>
                     <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>{s.name}</div>
-                    <div className="mono" style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '2px' }}>{s.role || "Wholesaler"}</div>
+                    <div className="mono" style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '2px' }}>{s.contactMasked || "Wholesaler"}</div>
                   </div>
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD MISSING DATA MODAL POPUP */}
+      {showAddMissingModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
+        }}>
+          <div style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
+            borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px',
+            display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '500px', overflowY: 'auto'
+          }} className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {language === 'mm' ? "ဒေတာ အသစ်ထည့်မည်" : "Add Missing Data"}
+              </h3>
+              <button onClick={() => setShowAddMissingModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--text-tertiary)' }}>&times;</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Add Customer</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="text" placeholder="Customer Name" value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', outline: 'none' }} />
+                  <button onClick={() => {
+                    if (newCustomerName) {
+                      setBusinessProfile(prev => ({ ...prev, customers: [...(prev.customers||[]), { id: Date.now(), name: newCustomerName }] }));
+                      setNewCustomerName('');
+                    }
+                  }} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 16px' }}>Add</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Add Supplier</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="text" placeholder="Supplier Name" value={newSupplierName} onChange={e => setNewSupplierName(e.target.value)}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', outline: 'none' }} />
+                  <button onClick={() => {
+                    if (newSupplierName) {
+                      setBusinessProfile(prev => ({ ...prev, suppliers: [...(prev.suppliers||[]), { id: Date.now(), name: newSupplierName, contactMasked: '***' }] }));
+                      setNewSupplierName('');
+                    }
+                  }} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 16px' }}>Add</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Play, Cpu, Crosshair, Sparkles } from 'lucide-react';
+import { ArrowLeft, Play, Cpu, Crosshair, Sparkles, TrendingUp, Lightbulb, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
@@ -110,7 +110,53 @@ export default function AIReportPage({ onStartInterrogation, businessProfile = {
       // Customize verdict based on user scenario
       const customVerdict = {
         ...result,
-        verdict: `Based on your average sales of $${monthlySales.toLocaleString()} and outcomes of $${monthlyExpenses.toLocaleString()}, simulating "${scenario}" reveals a ${result.confidence > 0.8 ? 'strong' : 'moderate'} financial trend. Profit projection will decrease to $${points[5].profit.toLocaleString()} by Month 6, leading to ${businessProfile.expectedResult || 'Less Profit'} matching your expectations.`
+        verdict: `Based on your average sales of $${monthlySales.toLocaleString()} and outcomes of $${monthlyExpenses.toLocaleString()}, simulating "${scenario}" reveals a ${result.confidence > 0.8 ? 'strong' : 'moderate'} financial trend. Profit projection will decrease to $${points[5].profit.toLocaleString()} by Month 6, leading to ${businessProfile.expectedResult || 'Less Profit'} matching your expectations.`,
+        aiInsights: [
+          {
+            id: 'income',
+            title: 'ဝင်ငွေနှင့် ခန့်မှန်းချက်',
+            subtitle: 'Income and Prediction',
+            icon: TrendingUp,
+            blocks: [
+              "ရက် ၇ နှင့် ၇ ရက် ခန့်မှန်းချက် (7 days and 7 days prediction)",
+              "Next week's revenue is expected to drop by 4% due to competitor pricing.",
+              "Consider offering a short-term discount to maintain volume."
+            ]
+          },
+          {
+            id: 'swot',
+            title: 'SWOT သုံးသပ်ချက်',
+            subtitle: 'SWOT Analysis',
+            icon: Lightbulb,
+            blocks: [
+              "အားသာ 3 • အားနည်း 3 • အခွင့်အလမ်း 3 • ခြိမ်းခြောက် 3",
+              "Strength: Core customer loyalty remains high.",
+              "Threat: Immediate risk from new supply chain disruptions."
+            ]
+          },
+          {
+            id: 'segments',
+            title: 'ဖောက်သည် အုပ်စုများ',
+            subtitle: 'Customer Segments',
+            icon: Users,
+            blocks: [
+              "အုပ်စု 1 ခု (1 segment)",
+              "Focus specifically on wholesale buyers who are price-sensitive.",
+              "Avoid broad marketing; target direct SMS campaigns."
+            ]
+          },
+          {
+            id: 'suggestions',
+            title: 'AI အကြံပြုချက်များ',
+            subtitle: 'AI Suggestions',
+            icon: Sparkles,
+            blocks: [
+              "ပရိုမိုးရှင်း • ကုန်ပစ္စည်း • ဈေးနှုန်း • ကြီးထွားရေး",
+              "Product Strategy: bundle slow-moving items with high-demand goods.",
+              "Pricing Strategy: match competitor prices but reduce payment terms."
+            ]
+          }
+        ]
       };
       
       setVerdictData(customVerdict);
@@ -258,7 +304,7 @@ export default function AIReportPage({ onStartInterrogation, businessProfile = {
         </div>
 
         {/* Right Column: AI Output */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {stage === 'setup' && (
             <div className="w-full h-[500px] bg-surface-card rounded-xl border border-border border-dashed flex flex-col items-center justify-center text-txt-tertiary shadow-sm transition-all duration-300">
               <Cpu size={36} className="mb-6 text-txt-secondary opacity-40" />
@@ -392,35 +438,28 @@ export default function AIReportPage({ onStartInterrogation, businessProfile = {
                 </div>
               </div>
 
-              {/* Scenarios Details */}
-              <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm">
-                <h3 className="text-sm font-semibold text-txt-primary mb-4">Evaluated Pathways</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {verdictData.scenarios.map((sc, idx) => (
-                    <div key={idx} className={`p-4 rounded-lg border transition-all flex flex-col ${sc.strong ? 'border-border bg-surface-active/40 shadow-sm' : 'border-border-light bg-surface-panel/60'}`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-semibold text-txt-primary">{sc.title}</span>
-                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${sc.strong ? 'bg-surface-active text-txt-primary border border-border' : 'bg-surface-panel text-txt-secondary border border-border-light'}`}>
-                          {sc.prob}%
-                        </span>
+              {/* 4 Major AI Suggestion Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {verdictData.aiInsights?.map((insight) => {
+                  const IconComponent = insight.icon;
+                  return (
+                    <div key={insight.id} className="bg-surface-card p-6 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-3 mb-4">
+                        <IconComponent size={20} className="text-txt-primary opacity-80" />
+                        <div>
+                          <h3 className="text-sm font-semibold text-txt-primary">{insight.title}</h3>
+                        </div>
                       </div>
-                      <p className="text-xs text-txt-secondary leading-relaxed flex-1">{sc.desc}</p>
+                      <div className="space-y-3">
+                        {insight.blocks.map((block, idx) => (
+                          <div key={idx} className="bg-surface-panel/50 p-3 rounded-lg border border-border-light">
+                            <p className="text-xs text-txt-secondary leading-relaxed">{block}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Key Observed Dynamics */}
-              <div className="bg-surface-card p-6 rounded-xl border border-border shadow-sm">
-                <h3 className="text-sm font-semibold text-txt-primary mb-4">Key Market Dynamics Observed</h3>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {verdictData.dynamics.map((d, idx) => (
-                    <li key={idx} className="flex gap-3 items-start text-sm text-txt-secondary bg-surface-panel p-4 rounded-lg border border-border-light transition-all hover:bg-surface-hover/55">
-                      <span className="w-1.5 h-1.5 rounded-full bg-txt-secondary/60 mt-1.5 shrink-0" />
-                      <span className="leading-relaxed">{d}</span>
-                    </li>
-                  ))}
-                </ul>
+                  );
+                })}
               </div>
 
             </div>
