@@ -5,10 +5,6 @@ import { importSalesFile } from '../../utils/salesImporter';
 
 export default function Onboarding({ onImportComplete, language = 'mm' }) {
   const t = translations[language] || translations['en']; // Fallback
-  const [manualText, setManualText] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null);
-  const [importStatus, setImportStatus] = useState(null); // null, 'parsing', 'wizard'
   
   // Form Wizard Steps (0 to 10)
   const [step, setStep] = useState(0);
@@ -41,36 +37,6 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
 
   const [salesHistory, setSalesHistory] = useState([]);
   const [filePreview, setFilePreview] = useState(null);
-
-  const startImportProcess = (method) => {
-    setImportStatus('parsing');
-    setUploadProgress({ step: language === 'mm' ? 'AI ဖြင့် လုပ်ငန်းအချက်အလက်များ လေ့လာဆန်းစစ်နေပါသည်...' : 'AI parsing business context...', value: 30 });
-    
-    setTimeout(() => {
-      setUploadProgress({ step: language === 'mm' ? 'အချက်အလက်များ တိုက်ဆိုင်စစ်ဆေးနေပါသည်...' : 'Verifying required data points...', value: 70 });
-      setTimeout(() => {
-        setUploadProgress(null);
-        if (method === 'text') {
-          const lowerText = manualText.toLowerCase();
-          if (lowerText.includes('clothing') || lowerText.includes('cloth') || lowerText.includes('အထည်')) setProduct('Clothing Apparel');
-          else if (lowerText.includes('grocery') || lowerText.includes('ကုန်စုံ')) setProduct('Grocery Staples');
-          else setProduct('General Trading');
-        }
-        setImportStatus('wizard');
-        setStep(0);
-      }, 1000);
-    }, 800);
-  };
-
-  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => { setIsDragging(false); };
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    startImportProcess('file');
-  };
 
   // Mask contact for privacy
   const maskContact = (contact) => {
@@ -236,83 +202,6 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
         overflow: 'hidden', borderRadius: '24px', boxShadow: '0 12px 48px rgba(0,0,0,0.1)'
       }}>
         
-        {importStatus === null && (
-          <div style={{ padding: '48px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', height: '100%' }}>
-            <div className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.15em', marginBottom: '16px' }}>
-              STRIVO SETUP &middot; {language === 'mm' ? "လုပ်ငန်း စတင်ခြင်း" : "ONBOARDING"}
-            </div>
-            <h1 style={{ fontSize: '28px', letterSpacing: '-0.04em', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              {language === 'mm' ? "လုပ်ငန်းဒေတာ ထည့်သွင်းခြင်း" : "Import SME Data"}
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px', lineHeight: 1.6, maxWidth: '400px' }}>
-              {language === 'mm' 
-                ? "သင်၏ အရောင်းမှတ်တမ်းများ၊ ပြေစာများ တင်သွင်းပါ။ စနစ်မှ အလိုအလျောက် သုံးသပ်ပြီး စမ်းသပ်ပတ်ဝန်းကျင် ဖန်တီးပေးပါမည်။"
-                : "Drop local POS sales reports or invoices. Strivo will verify your records and open the strategic simulation sandbox."
-              }
-            </p>
-
-            <div className="w-full max-w-md flex flex-col gap-5">
-              <div
-                className={`drop-zone ${isDragging ? 'active' : ''}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => startImportProcess('file')}
-                style={{
-                  height: '180px', display: 'flex', flexDirection: 'column', 
-                  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  border: '2px dashed var(--border-default)', borderRadius: '16px',
-                  background: isDragging ? 'var(--accent-soft)' : 'var(--bg-elevated)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <FileUp size={36} color={isDragging ? 'var(--accent)' : 'var(--text-tertiary)'} style={{ marginBottom: '12px' }} />
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
-                  {language === 'mm' ? "ဖိုင်များ ဆွဲထည့်ပါ" : "Drag and drop files here"}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  {language === 'mm' ? "Excel သို့မဟုတ် CSV ဖိုင်" : "Supports Excel & CSV"}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-3 mt-4">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-default)' }} />
-                  <span className="mono" style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                    {language === 'mm' ? "သို့မဟုတ်" : "OR"}
-                  </span>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-default)' }} />
-                </div>
-                
-                <button
-                  onClick={() => { setImportStatus('wizard'); setStep(0); }}
-                  className="btn-primary w-full"
-                  style={{ height: '44px', fontSize: '14px', background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', boxShadow: 'none' }}
-                >
-                  {language === 'mm' ? "မေးခွန်းများဖြင့် စတင်မည်" : "Start Manual Setup Wizard"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {importStatus === 'parsing' && (
-          <div style={{ padding: '64px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <div className="flex items-center gap-2" style={{ marginBottom: '16px' }}>
-              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-            <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '16px' }}>
-              {uploadProgress?.step}
-            </div>
-            <div style={{ width: '200px', height: '4px', background: 'var(--bg-track)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div style={{ width: `${uploadProgress?.value}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s ease-out' }} />
-            </div>
-          </div>
-        )}
-
-        {importStatus === 'wizard' && (
           <div className="flex flex-col h-full overflow-hidden">
             <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -666,7 +555,6 @@ export default function Onboarding({ onImportComplete, language = 'mm' }) {
             </div>
             
           </div>
-        )}
       </div>
     </div>
   );
