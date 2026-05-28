@@ -79,19 +79,28 @@ export default function AnalyticsView({ workspace = {}, businessProfile = {}, on
     try {
       const result = await api.runSimulation('main', ratios);
 
-      // Generate projection curves based on profile
-      const monthlySales = businessProfile?.sales?.monthly || 12000;
-      const monthlyExpenses = businessProfile?.expenses || 8000;
+      // Generate projection curves based on profile and sales history
+      let derivedMonthlySales = 0;
+      let derivedMonthlyExpenses = 0;
+      if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+        derivedMonthlySales = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.sales || 0), 0);
+        derivedMonthlyExpenses = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.expenses || 0), 0);
+      }
+      
+      const monthlySales = derivedMonthlySales || businessProfile?.sales?.monthly || 12000;
+      const monthlyExpenses = derivedMonthlyExpenses || businessProfile?.expenses || 8000;
       const compRatio = hasRivals ? (ratios.competitors / 100) : 0.7;
       const custRatio = ratios.customers / 100;
       const distRatio = ratios.distributors / 100;
+
+      const initialCustomers = businessProfile?.customers && businessProfile.customers.length > 0 ? businessProfile.customers.length * 12 : 180;
 
       const points = [];
       for (let step = 1; step <= 6; step++) {
         let revenue = monthlySales;
         let expenses = monthlyExpenses;
         let marketShare = 65;
-        let customers = 180;
+        let customers = initialCustomers;
 
         if (targetScenario.includes('Price') || targetScenario.includes('Cut')) {
           marketShare -= step * (compRatio * 5);
@@ -122,11 +131,14 @@ export default function AnalyticsView({ workspace = {}, businessProfile = {}, on
       setSimulationData(points);
 
       // Dynamic AI suggestions matching selection
+      const firstRivalMm = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "ပြိုင်ဘက်များ";
+      const firstRivalEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "rivals";
+
       let recommendationText = "";
       if (targetScenario.includes('Price') || targetScenario.includes('Cut')) {
         recommendationText = language === 'mm'
-          ? `ပြိုင်ဘက်များ၏ ဈေးနှုန်းအားပြိုင်မှု (${ratios.competitors}%) ကြောင့် နောက် ၆ လအတွင်း အသားတင်အမြတ် ကျဆင်းသွားနိုင်ပါသည်။ စျေးနှုန်းလျှော့ချပြီး တိုက်ရိုက်ယှဉ်ပြိုင်မည့်အစား Viber/Telegram မှတဆင့် ဖောက်သည်ဟောင်းများအား အထူးသစ္စာရှိမှုအစီအစဉ် (Loyalty Program) များ ဖန်တီးပေးခြင်းဖြင့် ဈေးကွက်ဝေစုကို ထိန်းသိမ်းရန် အကြံပြုအပ်ပါသည်။ ၎င်းသည် သင်ခန့်မှန်းထားသော "${expectedResult}" ရလဒ်ထက် ပိုမိုကောင်းမွန်စေပါမည်။`
-          : `High competitive pressure (${ratios.competitors}%) from rivals will likely erode net profit within 6 months. Rather than engaging in direct price wars, we recommend launching exclusive loyalty programs via Viber and Telegram channels to protect margins, helping mitigate the expected "${expectedResult}" outcome.`;
+          ? `ပြိုင်ဘက် "${firstRivalMm}" ၏ ဈေးနှုန်းအားပြိုင်မှု (${ratios.competitors}%) ကြောင့် နောက် ၆ လအတွင်း အသားတင်အမြတ် ကျဆင်းသွားနိုင်ပါသည်။ စျေးနှုန်းလျှော့ချပြီး တိုက်ရိုက်ယှဉ်ပြိုင်မည့်အစား Viber/Telegram မှတဆင့် ဖောက်သည်ဟောင်းများအား အထူးသစ္စာရှိမှုအစီအစဉ် (Loyalty Program) များ ဖန်တီးပေးခြင်းဖြင့် ဈေးကွက်ဝေစုကို ထိန်းသိမ်းရန် အကြံပြုအပ်ပါသည်။ ၎င်းသည် သင်ခန့်မှန်းထားသော "${expectedResult}" ရလဒ်ထက် ပိုမိုကောင်းမွန်စေပါမည်။`
+          : `High competitive pressure (${ratios.competitors}%) from "${firstRivalEn}" will likely erode net profit within 6 months. Rather than engaging in direct price wars, we recommend launching exclusive loyalty programs via Viber and Telegram channels to protect margins, helping mitigate the expected "${expectedResult}" outcome.`;
       } else if (targetScenario.includes('Credit') || targetScenario.includes('Demand')) {
         recommendationText = language === 'mm'
           ? `ဖောက်သည်များ၏ အကြွေးဝယ်ယူလိုအား တိုးတက်လာသဖြင့် ကုန်ကျစရိတ် မြင့်တက်လာနိုင်ပါသည်။ အကြွေးကို စနစ်တကျစီမံရန်အတွက် အမှာစာအသစ်များ၏ ၂၀% အား လက်ငင်းငွေချေစနစ်ဖြင့် ပေးချေစေခြင်း သို့မဟုတ် အရောင်းပမာဏများပြားသော ဖောက်သည်အချို့ကိုသာ ကန့်သတ်ခွင့်ပြုရန် အကြံပြုပါသည်။ ၎င်းသည် "${expectedResult}" ဖြစ်ပေါ်မှုမှ ကာကွယ်ပေးပါမည်။`

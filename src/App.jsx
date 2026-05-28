@@ -47,14 +47,14 @@ export default function App() {
 
   const navigate = useNavigate();
 
-  // Fetch base workspace data on mount
+  // Fetch workspace data on mount and when businessProfile updates
   useEffect(() => {
     async function load() {
-      const data = await api.getWorkspaceData();
+      const data = await api.getWorkspaceData(businessProfile);
       setBaseWorkspace(data);
     }
     load();
-  }, []);
+  }, [businessProfile]);
 
   // Compute dynamic workspace data (no longer split by activeHistoryId)
   useEffect(() => {

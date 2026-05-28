@@ -13,35 +13,134 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
     day: '2-digit',
     month: 'short'
   }).toUpperCase().replace(',', ' ·');
-
   // Dynamic Metrics based on onboarding inputs
-  const dailySales = businessProfile?.sales?.daily || 400;
+  let derivedDaily = 0;
+  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+    const total = businessProfile.salesHistory.reduce((sum, h) => sum + (h.sales || 0), 0);
+    derivedDaily = Math.round(total / businessProfile.salesHistory.length);
+  }
+
+  const dailySales = derivedDaily || businessProfile?.sales?.daily || 400;
   const weeklySales = businessProfile?.sales?.weekly || (dailySales * 7);
   const monthlySales = businessProfile?.sales?.monthly || (dailySales * 30) || 12000;
   const monthlyExpenses = businessProfile?.expenses || 8000;
   const netProfit = monthlySales - monthlyExpenses;
 
-  // Recent activity list
-  const recentFacts = [
-    { source: 'telegram', descMm: "ဦးအောင်ကျော် ဆီ ၂ ပျား ဝယ်ယူသွားပြီး ကျပ် ၁၅,၀၀၀ ကျန်ရှိသည်", descEn: "U Aung Kyaw took 2 viss of oil, owes $15", amount: "15,000 MMK", time: "10 mins ago" },
-    { source: 'voice', descMm: "ဆန် ၂၀ အိတ်ရောင်းရသည်။ စုစုပေါင်း ၁၂ သိန်းရရှိသည်", descEn: "Sold 20 bags of rice for 1.2M MMK", amount: "1,200,000 MMK", time: "1 hour ago" },
-    { source: 'pdf', descMm: "လက်ကား ပံ့ပိုးသူ ဆီဆိုင်မှ ငွေတောင်းခံလွှာ လက်ခံရရှိသည်", descEn: "Invoice received from wholesale supplier", amount: "350,000 MMK", time: "4 hours ago" },
-    { source: 'excel', descMm: "လက်ကျန်စာရင်း ဒေတာ ၂၄ ခုအား အလိုအလျောက် သွင်းယူပြီးသည်", descEn: "Spreadsheet import completed: 24 inventory items", amount: "24 items", time: "Yesterday" }
-  ];
+  // Recent activity list - dynamically built using customer, products and suppliers lists
+  const recentFacts = [];
+  
+  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+    recentFacts.push({
+      source: 'excel',
+      descMm: `အရောင်းမှတ်တမ်းဖိုင် (ဒေတာ ${businessProfile.salesHistory.length} ရက်စာ) တင်သွင်းပြီးပါပြီ`,
+      descEn: `Sales history imported: ${businessProfile.salesHistory.length} days of data loaded`,
+      amount: `${businessProfile.salesHistory.length} days`,
+      time: "Just now"
+    });
+  }
 
-  // Needs Attention items
+  if (businessProfile?.customers && businessProfile.customers.length > 0) {
+    const cust = businessProfile.customers[0];
+    const prodNameMm = businessProfile.products && businessProfile.products.length > 0 ? businessProfile.products[0].name : "ဆန်";
+    const prodNameEn = businessProfile.products && businessProfile.products.length > 0 ? businessProfile.products[0].name : "Rice Bags";
+    
+    recentFacts.push({
+      source: 'telegram',
+      descMm: `${cust.name} မှ ${prodNameMm} ဝယ်ယူသွားပြီး ကျပ် ၁၅,၀၀၀ ကျန်ရှိသည်`,
+      descEn: `${cust.name} took ${prodNameEn}, owes 15,000 MMK`,
+      amount: "15,000 MMK",
+      time: "10 mins ago"
+    });
+  }
+
+  if (businessProfile?.products && businessProfile.products.length > 0) {
+    const prod = businessProfile.products[0];
+    const qty = 20;
+    const totalVal = prod.price * qty;
+    recentFacts.push({
+      source: 'voice',
+      descMm: `${prod.name} ${qty} ခု ရောင်းရသည်။ စုစုပေါင်း ကျပ် ${totalVal.toLocaleString()} ရရှိသည်`,
+      descEn: `Sold ${qty} units of ${prod.name} for ${totalVal.toLocaleString()} MMK`,
+      amount: `${totalVal.toLocaleString()} MMK`,
+      time: "1 hour ago"
+    });
+  }
+
+  if (businessProfile?.suppliers && businessProfile.suppliers.length > 0) {
+    const supp = businessProfile.suppliers[0];
+    recentFacts.push({
+      source: 'pdf',
+      descMm: `လက်ကား ပံ့ပိုးသူ ${supp.name} မှ ကုန်ပစ္စည်းပေးပို့လွှာ လက်ခံရရှိသည်`,
+      descEn: `Invoice received from wholesale supplier ${supp.name}`,
+      amount: "350,000 MMK",
+      time: "4 hours ago"
+    });
+  }
+
+  // Fallbacks if list is too short
+  if (recentFacts.length < 4) {
+    const fallbacks = [
+      { source: 'telegram', descMm: "ဦးအောင်ကျော် ဆီ ၂ ပျား ဝယ်ယူသွားပြီး ကျပ် ၁၅,၀၀၀ ကျန်ရှိသည်", descEn: "U Aung Kyaw took 2 viss of oil, owes 15,000 MMK", amount: "15,000 MMK", time: "10 mins ago" },
+      { source: 'voice', descMm: "ဆန် ၂၀ အိတ်ရောင်းရသည်။ စုစုပေါင်း ၁၂ သိန်းရရှိသည်", descEn: "Sold 20 bags of rice for 1.2M MMK", amount: "1,200,000 MMK", time: "1 hour ago" },
+      { source: 'pdf', descMm: "လက်ကား ပံ့ပိုးသူ ဆီဆိုင်မှ ငွေတောင်းခံလွှာ လက်ခံရရှိသည်", descEn: "Invoice received from wholesale supplier", amount: "350,000 MMK", time: "4 hours ago" },
+      { source: 'excel', descMm: "လက်ကျန်စာရင်း ဒေတာ ၂၄ ခုအား အလိုအလျောက် သွင်းယူပြီးသည်", descEn: "Spreadsheet import completed: 24 inventory items", amount: "24 items", time: "Yesterday" }
+    ];
+    
+    fallbacks.forEach(fb => {
+      if (recentFacts.length < 4 && !recentFacts.some(f => f.source === fb.source)) {
+        recentFacts.push(fb);
+      }
+    });
+  }
+
+  // Needs Attention items - dynamically customized using custom input directories
+  const overdueCust = businessProfile?.customers && businessProfile.customers.length > 0 ? businessProfile.customers[0].name : "ဦးအောင်ကျော်";
+  
+  const lowStockProdMm = businessProfile?.products && businessProfile.products.length > 0 ? `${businessProfile.products[0].name} ကုန်စည်လက်ကျန် နည်းနေပါသည်` : "ဆန်ကုန်စည်လက်ကျန် နည်းနေပါသည်";
+  const lowStockProdEn = businessProfile?.products && businessProfile.products.length > 0 ? `${businessProfile.products[0].name} inventory level low` : "Rice bags inventory level low";
+  const lowStockDescMm = businessProfile?.products && businessProfile.products.length > 0 ? `လက်ကျန် ၃ ခုသာရှိတော့သဖြင့် သတ်မှတ်ချက် ${businessProfile.thresholds?.inventoryLow || 10} အတိုင်း ပြန်လည်မှာယူရန် အကြံပြုပါသည်` : "လက်ကျန် ၃ အိတ်သာရှိတော့သဖြင့် ထပ်မံမှာယူရန် အကြံပြုပါသည်";
+  const lowStockDescEn = businessProfile?.products && businessProfile.products.length > 0 ? `Only 3 units left, reorder threshold of ${businessProfile.thresholds?.inventoryLow || 10} reached` : "Only 3 bags left, reorder threshold reached";
+
+  const mainRival = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "ပြိုင်ဘက် ဆိုင်ကြီး";
+  const mainRivalEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "Rival Shop";
+  const rivalStrategyMm = businessProfile?.rivals && businessProfile.rivals.length > 0 ? `မဟာဗျူဟာ: ${businessProfile.rivals[0].pricing}` : "စက်ဆန်းရပ်ကွက်ရှိ ဆိုင်ကြီးမှ ဆန်စျေးနှုန်းများ စတင်လျှော့ချလာသည်";
+  const rivalStrategyEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? `Pricing Strategy: ${businessProfile.rivals[0].pricing}` : "Competitor price drop detected in neighboring ward";
+
   const attentionItems = [
-    { type: 'receivables', titleMm: "ဦးအောင်ကျော် - ပေးရန်ကျန်ငွေ ရက်လွန်နေသည်", titleEn: "U Aung Kyaw - Receivable outstanding", descMm: "၁၅ ရက်ကျော် ရက်လွန်နေသဖြင့် အကြောင်းကြားရန် လိုအပ်သည်", descEn: "Overdue by 15 days, send reminder", icon: AlertCircle, color: 'var(--caution)' },
-    { type: 'inventory', titleMm: "ဆန်ကုန်စည်လက်ကျန် နည်းနေပါသည်", titleEn: "Rice bags inventory level low", descMm: "လက်ကျန် ၃ အိတ်သာရှိတော့သဖြင့် ထပ်မံမှာယူရန် အကြံပြုပါသည်", descEn: "Only 3 bags left, reorder threshold reached", icon: ShoppingBag, color: 'var(--critical)' },
-    { type: 'competitor', titleMm: "ပြိုင်ဘက် ဆိုင်ကြီးမှ စျေးနှုန်း ၅% လျှော့ချလိုက်သည်", titleEn: "Rival Shop cut prices by 5%", descMm: "စက်ဆန်းရပ်ကွက်ရှိ ဆိုင်ကြီးမှ ဆန်စျေးနှုန်းများ စတင်လျှော့ချလာသည်", descEn: "Competitor price drop detected in neighboring ward", icon: TrendingUp, color: 'var(--accent)' }
+    { type: 'receivables', titleMm: `${overdueCust} - ပေးရန်ကျန်ငွေ ရက်လွန်နေသည်`, titleEn: `${overdueCust} - Receivable outstanding`, descMm: "၁၅ ရက်ကျော် ရက်လွန်နေသဖြင့် အကြောင်းကြားရန် လိုအပ်သည်", descEn: "Overdue by 15 days, send reminder", icon: AlertCircle, color: 'var(--caution)' },
+    { type: 'inventory', titleMm: lowStockProdMm, titleEn: lowStockProdEn, descMm: lowStockDescMm, descEn: lowStockDescEn, icon: ShoppingBag, color: 'var(--critical)' },
+    { type: 'competitor', titleMm: `${mainRival} မှ စျေးနှုန်း ၅% လျှော့ချလိုက်သည်`, titleEn: `${mainRivalEn} cut prices by 5%`, descMm: rivalStrategyMm, descEn: rivalStrategyEn, icon: TrendingUp, color: 'var(--accent)' }
   ];
 
   // Top products
-  const topProducts = [
-    { nameMm: "ဆန် (Rice Bags)", nameEn: "Rice Bags", value: "850,000 MMK", pct: 75 },
-    { nameMm: "စားအုန်းဆီ (Cooking Oil)", nameEn: "Cooking Oil", value: "240,000 MMK", pct: 45 },
-    { nameMm: "ပဲအမျိုးမျိုး (Pulses)", nameEn: "Pulses & Beans", value: "110,000 MMK", pct: 20 }
-  ];
+  const topProducts = [];
+  if (businessProfile?.products && businessProfile.products.length > 0) {
+    businessProfile.products.forEach((prod, idx) => {
+      if (idx < 3) {
+        topProducts.push({
+          nameMm: prod.name,
+          nameEn: prod.name,
+          value: `${(prod.price * 10).toLocaleString()} MMK`,
+          pct: 85 - (idx * 25)
+        });
+      }
+    });
+  }
+
+  if (topProducts.length < 3) {
+    const fallbacks = [
+      { nameMm: "ဆန် (Rice Bags)", nameEn: "Rice Bags", value: "850,000 MMK", pct: 75 },
+      { nameMm: "စားအုန်းဆီ (Cooking Oil)", nameEn: "Cooking Oil", value: "240,000 MMK", pct: 45 },
+      { nameMm: "ပဲအမျိုးမျိုး (Pulses)", nameEn: "Pulses & Beans", value: "110,000 MMK", pct: 20 }
+    ];
+    fallbacks.forEach(fb => {
+      if (topProducts.length < 3 && !topProducts.some(p => p.nameEn === fb.nameEn)) {
+        topProducts.push(fb);
+      }
+    });
+  }
+
+  const itemsLowCount = businessProfile?.products && businessProfile.products.length > 0 ? Math.round(businessProfile.products.length / 3) || 1 : 3;
 
   // Source Icons helper
   const getSourceIcon = (source) => {
@@ -192,7 +291,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, se
               {t.itemsLow}
             </span>
             <div className="font-number" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
-              3 {language === 'mm' ? "မျိုး" : "Items"}
+              {itemsLowCount} {language === 'mm' ? "မျိုး" : "Items"}
             </div>
           </div>
         </div>

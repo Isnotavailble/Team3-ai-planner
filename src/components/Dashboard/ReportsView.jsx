@@ -8,19 +8,61 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
   const [period, setPeriod] = useState('monthly'); // 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   const [activeMetric, setActiveMetric] = useState('revenue'); // 'revenue' | 'expenses'
 
-  // Calculations based on profile
-  const monthlySales = businessProfile?.sales?.monthly || 12000;
-  const monthlyExpenses = businessProfile?.expenses || 8000;
+  // Calculations based on profile and salesHistory
+  let derivedMonthlySales = 0;
+  let derivedMonthlyExpenses = 0;
+
+  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+    const maySales = businessProfile.salesHistory
+      .filter(h => h.date && h.date.startsWith('2026-05'))
+      .reduce((sum, h) => sum + (h.sales || 0), 0);
+    const mayExpenses = businessProfile.salesHistory
+      .filter(h => h.date && h.date.startsWith('2026-05'))
+      .reduce((sum, h) => sum + (h.expenses || 0), 0);
+
+    derivedMonthlySales = maySales;
+    derivedMonthlyExpenses = mayExpenses;
+
+    if (derivedMonthlySales === 0) {
+      derivedMonthlySales = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.sales || 0), 0);
+      derivedMonthlyExpenses = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.expenses || 0), 0);
+    }
+  }
+
+  const monthlySales = derivedMonthlySales || businessProfile?.sales?.monthly || 12000;
+  const monthlyExpenses = derivedMonthlyExpenses || businessProfile?.expenses || 8000;
   
-  // Set default target to 15,000 MMK/USD or custom target if set
-  const salesTarget = businessProfile?.targetValue || 15000; 
+  // Set default target to 125% of monthly sales if not specified
+  const salesTarget = businessProfile?.targetValue || Math.round(monthlySales * 1.25); 
 
   // Radial Gauge Calculations
   const progressRatio = Math.min(1, monthlySales / salesTarget);
   const strokeDashOffset = 440 - (progressRatio * 220); // 440 is the half-circle circumference baseline
 
-  // Mock data for Revenue vs Target (Recharts)
-  const barChartData = [
+  // Recharts Monthly Revenue vs Target History
+  let customBarData = [];
+  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+    const months = {};
+    businessProfile.salesHistory.forEach(h => {
+      if (h.date) {
+        // format e.g. "May"
+        const mName = new Date(h.date).toLocaleDateString('en-US', { month: 'short' });
+        if (!months[mName]) {
+          months[mName] = { sales: 0, expenses: 0 };
+        }
+        months[mName].sales += h.sales || 0;
+        months[mName].expenses += h.expenses || 0;
+      }
+    });
+    
+    customBarData = Object.keys(months).map(m => ({
+      name: m,
+      Revenue: months[m].sales,
+      Target: Math.round(months[m].sales * 1.1)
+    }));
+  }
+
+  const barChartData = customBarData.length > 0 ? customBarData : [
     { name: 'Dec', Revenue: 10500, Target: 11000 },
     { name: 'Jan', Revenue: 11000, Target: 12000 },
     { name: 'Feb', Revenue: 9800, Target: 12000 },
@@ -29,12 +71,18 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
     { name: 'May', Revenue: monthlySales, Target: salesTarget }
   ];
 
-  // Mock data for Expense allocation Pie Chart
+  // Dynamic Expense allocation Pie Chart
+  const hasSuppliers = businessProfile?.suppliers && businessProfile.suppliers.length > 0;
+  const supplierCost = hasSuppliers ? Math.round(monthlyExpenses * 0.55) : Math.round(monthlyExpenses * 0.5);
+  const salariesCost = hasSuppliers ? Math.round(monthlyExpenses * 0.20) : Math.round(monthlyExpenses * 0.25);
+  const rentCost = Math.round(monthlyExpenses * 0.15);
+  const operationsCost = monthlyExpenses - supplierCost - salariesCost - rentCost;
+
   const pieChartData = [
-    { name: language === 'mm' ? "ကုန်ပစ္စည်း ဖိုး" : "Supplier Costs", value: Math.round(monthlyExpenses * 0.5) },
-    { name: language === 'mm' ? "လစာ များ" : "Salaries", value: Math.round(monthlyExpenses * 0.25) },
-    { name: language === 'mm' ? "ဆိုင်ခန်းငှားခ" : "Rent & Utilities", value: Math.round(monthlyExpenses * 0.15) },
-    { name: language === 'mm' ? "အထွေထွေ" : "Operations", value: Math.round(monthlyExpenses * 0.1) }
+    { name: language === 'mm' ? "ကုန်ပစ္စည်း ဖိုး" : "Supplier Costs", value: supplierCost },
+    { name: language === 'mm' ? "လစာ များ" : "Salaries", value: salariesCost },
+    { name: language === 'mm' ? "ဆိုင်ခန်းငှားခ" : "Rent & Utilities", value: rentCost },
+    { name: language === 'mm' ? "အထွေထွေ" : "Operations", value: operationsCost }
   ];
 
   const PIE_COLORS = ['#6B2D7B', '#B85C8E', '#5C7B6B', '#C97755'];
