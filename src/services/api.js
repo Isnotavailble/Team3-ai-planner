@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { mapToEntityDTO } from '../dtos/entity.dto';
 import { mapToEdgeDTO } from '../dtos/edge.dto';
 import { mapToSimulationDTO } from '../dtos/simulation.dto';
@@ -11,6 +12,8 @@ import {
   RAW_INSIGHTS
 } from '../data/mockData';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1/api';
+
 class LatticeApiService {
   constructor() {
     this.entities = [...RAW_ENTITIES];
@@ -19,169 +22,94 @@ class LatticeApiService {
     this.simResults = { ...RAW_SIM_RESULTS };
   }
 
-  async getWorkspaceData(businessProfile) {
-    await new Promise(resolve => setTimeout(resolve, 200));
+  validateProfile(profile) {
+    const validated = {
+      product: 'Clothing Apparel',
+      hasPOS: true,
+      sales: { monthly: 12000, daily: 400, weekly: 3000, yearly: 140000 },
+      expenses: 8000,
+      rivals: [],
+      customers: [],
+      products: [],
+      suppliers: [],
+      salesHistory: [],
+      targetScenario: 'Competitor Price Cut',
+      expectedResult: 'Less Profit',
+      thresholds: { inventoryLow: 10 },
+      ...profile
+    };
 
-    let dynamicEntities = [...this.entities];
-    let dynamicEdges = [...this.edges];
+    // Ensure nested objects are initialized
+    validated.sales = {
+      monthly: 12000,
+      daily: 400,
+      weekly: 3000,
+      yearly: 140000,
+      ...(profile?.sales || {})
+    };
 
-    if (businessProfile) {
-      // 1. Update the 'our-app' entity name to the business product category if available
-      const ourAppIdx = dynamicEntities.findIndex(e => e.id === 'our-app');
-      if (ourAppIdx !== -1 && businessProfile.product) {
-        dynamicEntities[ourAppIdx] = {
-          ...dynamicEntities[ourAppIdx],
-          name: businessProfile.product,
-          summary: `Our business. Custom category: ${businessProfile.product}.`
-        };
-      }
+    // Ensure array fields are actually arrays
+    if (!Array.isArray(validated.rivals)) validated.rivals = [];
+    if (!Array.isArray(validated.customers)) validated.customers = [];
+    if (!Array.isArray(validated.products)) validated.products = [];
+    if (!Array.isArray(validated.suppliers)) validated.suppliers = [];
+    if (!Array.isArray(validated.salesHistory)) validated.salesHistory = [];
 
-      // 2. Add dynamic competitors from businessProfile.rivals
-      if (Array.isArray(businessProfile.rivals)) {
-        businessProfile.rivals.forEach((rival, idx) => {
-          const id = `competitor-dynamic-${idx}`;
-          // Position them around the competitor cluster (competitor-a is at 480, 348)
-          const angle = (idx * 2 * Math.PI) / Math.max(1, businessProfile.rivals.length);
-          const radius = 80;
-          const x = Math.round(480 + radius * Math.cos(angle));
-          const y = Math.round(348 + radius * Math.sin(angle));
-
-          dynamicEntities.push({
-            id: id,
-            name: rival.name,
-            type: 'company',
-            x: x,
-            y: y,
-            summary: `Competitor. Pricing Strategy: ${rival.pricing || 'Market Matcher'}. Target Audience: ${rival.audience || 'SMB Retailers'}.`
-          });
-
-          // Add tension edge
-          dynamicEdges.push({
-            a: id,
-            b: 'our-app',
-            kind: 'tension',
-            label: 'competing_for_shops'
-          });
-        });
-      }
-
-      // 3. Add dynamic customers
-      if (Array.isArray(businessProfile.customers)) {
-        businessProfile.customers.forEach((cust, idx) => {
-          const id = `customer-dynamic-${cust.id || idx}`;
-          // Position around yangon-shops segment at (668, 218)
-          const angle = (idx * 2 * Math.PI) / Math.max(1, businessProfile.customers.length);
-          const radius = 60;
-          const x = Math.round(668 + radius * Math.cos(angle));
-          const y = Math.round(218 + radius * Math.sin(angle));
-
-          dynamicEntities.push({
-            id: id,
-            name: cust.name,
-            type: 'person',
-            x: x,
-            y: y,
-            summary: `Active customer. Contact: ${cust.contact || 'No contact info'}.`
-          });
-
-          // Link customer to the target segment 'yangon-shops'
-          dynamicEdges.push({
-            a: id,
-            b: 'yangon-shops',
-            kind: 'quiet',
-            label: 'retailer'
-          });
-
-          // Link customer to 'our-app' as buying from us
-          dynamicEdges.push({
-            a: id,
-            b: 'our-app',
-            kind: 'active',
-            label: 'orders_on'
-          });
-        });
-      }
-
-      // 4. Add dynamic products
-      if (Array.isArray(businessProfile.products)) {
-        businessProfile.products.forEach((prod, idx) => {
-          const id = `product-dynamic-${prod.id || idx}`;
-          // Position around sz-ledger at (832, 530)
-          const angle = (idx * 2 * Math.PI) / Math.max(1, businessProfile.products.length);
-          const radius = 50;
-          const x = Math.round(832 + radius * Math.cos(angle));
-          const y = Math.round(530 + radius * Math.sin(angle));
-
-          dynamicEntities.push({
-            id: id,
-            name: prod.name,
-            type: 'product',
-            x: x,
-            y: y,
-            summary: `Product item. Base Price: ${prod.price || 0} MMK.`
-          });
-
-          // Link product to our ordering catalog (sz-ledger)
-          dynamicEdges.push({
-            a: 'sz-ledger',
-            b: id,
-            kind: 'strong',
-            label: 'catalog_item'
-          });
-        });
-      }
-
-      // 5. Add dynamic suppliers
-      if (Array.isArray(businessProfile.suppliers)) {
-        businessProfile.suppliers.forEach((supp, idx) => {
-          const id = `supplier-dynamic-${supp.id || idx}`;
-          // Position around mandalay-distrib segment at (824, 168)
-          const angle = (idx * 2 * Math.PI) / Math.max(1, businessProfile.suppliers.length);
-          const radius = 60;
-          const x = Math.round(824 + radius * Math.cos(angle));
-          const y = Math.round(168 + radius * Math.sin(angle));
-
-          dynamicEntities.push({
-            id: id,
-            name: supp.name,
-            type: 'company',
-            x: x,
-            y: y,
-            summary: `Supplier partner. Supplied products: ${supp.products ? (Array.isArray(supp.products) ? supp.products.join(', ') : supp.products) : 'Various'}. Contact: ${supp.contactMasked || '***'}.`
-          });
-
-          // Link supplier to 'our-app' as partner
-          dynamicEdges.push({
-            a: 'our-app',
-            b: id,
-            kind: 'active',
-            label: 'partners_with'
-          });
-        });
-      }
+    // Clean up numeric values
+    validated.expenses = parseFloat(validated.expenses) || 0;
+    for (const key in validated.sales) {
+      validated.sales[key] = parseFloat(validated.sales[key]) || 0;
     }
 
+    return validated;
+  }
+
+  async getWorkspaceData(businessProfile) {
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/workspace`, { businessProfile: cleanProfile });
+      const data = response.data;
+      return {
+        entities: (data.entities || []).map(mapToEntityDTO),
+        edges: (data.edges || []).map(mapToEdgeDTO),
+        materials: data.materials || this.materials
+      };
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock workspace data', e);
+    }
+    // Fallback if backend is down
     return {
-      entities: dynamicEntities.map(mapToEntityDTO),
-      edges: dynamicEdges.map(mapToEdgeDTO),
+      entities: this.entities.map(mapToEntityDTO),
+      edges: this.edges.map(mapToEdgeDTO),
       materials: this.materials
     };
   }
 
   async getDashboardData(businessProfile, language = 'mm') {
-    await new Promise(resolve => setTimeout(resolve, 100)); // simulate network delay
-    return mapToDashboardDTO(businessProfile, language);
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/dashboard`, { businessProfile: cleanProfile, language });
+      return response.data;
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock dashboard data', e);
+    }
+    // Fallback if backend is down
+    return mapToDashboardDTO(cleanProfile, language);
   }
 
   async getInsights(businessProfile, language = 'mm') {
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/insights`, { businessProfile: cleanProfile, language });
+      return mapToInsightsDTO(response.data, language);
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock insights data', e);
+    }
     return mapToInsightsDTO(RAW_INSIGHTS, language);
   }
 
   async importDocument({ fileType, fileName, url }) {
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Parsing text...
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Extracting entities...
-
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const docId = `doc-${Date.now()}`;
     const newMaterial = {
       id: docId,
@@ -190,96 +118,55 @@ class LatticeApiService {
       source: url || fileName || 'drag_drop_upload',
       uploaded: new Date().toISOString(),
       summary: `Auto-extracted B2B analysis of ${fileName || url}.`,
-      body: `Parsed content: local retailer requirements indicate high demand for supplier-backed credit accounts in Latha and Hlaing market coordinates.`,
+      body: `Parsed content placeholder.`,
       extracted: []
     };
-
-    const extractedIds = [];
-    if (fileType === 'pdf') {
-      extractedIds.push('yangon-shops', 'shop-1');
-    } else if (fileType === 'csv') {
-      extractedIds.push('mandalay-distrib', 'sz-ledger');
-    } else {
-      extractedIds.push('credit-reliance', 'competitor-a');
-    }
-
-    newMaterial.extracted = extractedIds;
     this.materials.unshift(newMaterial);
-
-    return {
-      material: newMaterial,
-      extractedEntities: extractedIds
-    };
+    return { material: newMaterial, extractedEntities: [] };
   }
 
   async mergeApprovedEntities(entityIds) {
-    await new Promise(resolve => setTimeout(resolve, 300));
     return { success: true, mergedCount: entityIds.length };
   }
 
-  async runSimulation(branchId, agentRatios) {
-    const totalRounds = 8;
-    const progressLogs = [];
-    
-    for (let round = 1; round <= totalRounds; round++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      progressLogs.push(`Round ${round}/${totalRounds}: Swarm agents reacting to inputs...`);
+  async runSimulation(branchId, agentRatios, profile = null) {
+    const cleanProfile = this.validateProfile(profile);
+    try {
+      const response = await axios.post(`${API_URL}/simulate`, { 
+        activeParameters: agentRatios, 
+        profile: cleanProfile
+      });
+      return response.data;
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock simulation', e);
     }
-
-    // Clone the raw result so we don't mutate the global mock data
+    
+    // Fallback Mock Logic
     const rawResult = JSON.parse(JSON.stringify(this.simResults['main']));
     
-    // agentRatios.competitors ranges from 10 to 100.
-    // We map 10->index 0 (Aggressive Capture) and 100->index 6 (Total Retreat)
-    const compRatio = agentRatios && agentRatios.competitors ? agentRatios.competitors : 50;
+    // Inject a default projections array to prevent crashes on fallback
+    const monthlySales = cleanProfile?.sales?.monthly || 12000;
+    const monthlyExpenses = cleanProfile?.expenses || 8000;
+    const initialCustomers = cleanProfile?.customers?.length * 12 || 180;
     
-    // Clamp to [0, 6] bounds
-    const peakIndex = Math.max(0, Math.min(6, ((compRatio - 10) / 90) * 6));
+    rawResult.projections = [];
+    for (let m = 1; m <= 6; m++) {
+      const factor = 1 + (m * 0.02) * (agentRatios.customers / 100 - agentRatios.competitors / 200);
+      const revenue = Math.round(monthlySales * factor);
+      const expenses = Math.round(monthlyExpenses * (1 + (m * 0.01) * (1 - agentRatios.distributors / 100)));
+      const profit = revenue - expenses;
+      const marketShare = Math.round(Math.max(10, Math.min(95, 60 + m * (agentRatios.customers / 150 - agentRatios.competitors / 200))));
+      const customers = Math.round(initialCustomers * factor);
+      rawResult.projections.push({ month: m, revenue, expenses, profit, marketShare, customers });
+    }
     
-    // Generate bell curve distribution (Normal Distribution)
-    const spread = 1.2;
-    let sum = 0;
-    const weights = rawResult.scenarios.map((_, i) => {
-      const w = Math.exp(-Math.pow(i - peakIndex, 2) / (2 * spread * spread));
-      sum += w;
-      return w;
-    });
-
-    // Normalize probabilities to ensure they sum exactly to 100%
-    let totalProb = 0;
-    rawResult.scenarios.forEach((sc, i) => {
-      if (i === rawResult.scenarios.length - 1) {
-        sc.prob = Math.max(0, 100 - totalProb); // Final element gets remainder
-      } else {
-        sc.prob = Math.round((weights[i] / sum) * 100);
-        totalProb += sc.prob;
-      }
-    });
-
-    return mapToSimulationDTO(rawResult);
+    return rawResult;
   }
 
   async sendChatMessage(agentId, messages) {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    let lastMessageText = '';
-    if (messages && messages.length > 0) {
-      lastMessageText = messages[messages.length - 1].text.toLowerCase();
-    }
-
-    let responseText = '';
-
-    if (lastMessageText.includes('policy') || lastMessageText.includes('competitor') || lastMessageText.includes('term')) {
-      responseText = `The Competitor Credit Policy is built to underwrite retail grocery accounts directly. If the primary platform matches credit terms, the system is designed to trigger automated extensions up to 30 days for high-volume shops to protect market share.`;
-    } else if (lastMessageText.includes('latha') || lastMessageText.includes('owner') || lastMessageText.includes('shop') || lastMessageText.includes('retailer')) {
-      responseText = `Honestly, shop owners like Latha prefer the platform's simple catalog, but running a store requires credit. If you roll out the supplier credit limits, they will shift all their grocery ordering back to your app.`;
-    } else {
-      responseText = `Local shop owners show high interest in catalog credit. Cash discounts help but do not solve daily cashflow gaps. Partnering with Mandalay Wholesalers for credit limits is highly recommended.`;
-    }
-
     return {
-      sender: agentId.toUpperCase().replace('AG-', '').replace(/-/g, ' '),
-      text: responseText,
+      sender: agentId.toUpperCase(),
+      text: "Chat is currently disabled in backend architecture.",
       timestamp: new Date().toISOString()
     };
   }
@@ -287,4 +174,3 @@ class LatticeApiService {
 
 export const api = new LatticeApiService();
 export default api;
-

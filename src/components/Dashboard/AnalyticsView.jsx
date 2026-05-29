@@ -87,81 +87,26 @@ export default function AnalyticsView({
     }
 
     try {
-      const result = await api.runSimulation('main', ratios);
+      const result = await api.runSimulation('main', ratios, businessProfile);
 
-      // Generate projection curves based on profile and sales history
-      let derivedMonthlySales = 0;
-      let derivedMonthlyExpenses = 0;
-      if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
-        derivedMonthlySales = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.sales || 0), 0);
-        derivedMonthlyExpenses = businessProfile.salesHistory.slice(-30).reduce((sum, h) => sum + (h.expenses || 0), 0);
-      }
-      
-      const monthlySales = derivedMonthlySales || businessProfile?.sales?.monthly || 12000;
-      const monthlyExpenses = derivedMonthlyExpenses || businessProfile?.expenses || 8000;
-      const compRatio = hasRivals ? (ratios.competitors / 100) : 0.7;
-      const custRatio = ratios.customers / 100;
-      const distRatio = ratios.distributors / 100;
-
-      const initialCustomers = businessProfile?.customers && businessProfile.customers.length > 0 ? businessProfile.customers.length * 12 : 180;
-
-      const points = [];
-      for (let step = 1; step <= 6; step++) {
-        let revenue = monthlySales;
-        let expenses = monthlyExpenses;
-        let marketShare = 65;
-        let customers = initialCustomers;
-
-        if (targetScenario.includes('Price') || targetScenario.includes('Cut')) {
-          marketShare -= step * (compRatio * 5);
-          revenue -= step * (compRatio * (monthlySales * 0.04));
-          customers -= step * (compRatio * 10);
-        } else if (targetScenario.includes('Credit') || targetScenario.includes('Demand')) {
-          revenue += step * (custRatio * (monthlySales * 0.02));
-          expenses += step * (custRatio * (monthlyExpenses * 0.05));
-          marketShare += step * (custRatio * 1.5);
-        } else if (targetScenario.includes('Chain') || targetScenario.includes('Inflation')) {
-          expenses += step * ((1 - distRatio) * (monthlyExpenses * 0.08));
-          marketShare -= step * 0.8;
-        } else {
-          revenue += step * (custRatio * (monthlySales * 0.015)) - step * (compRatio * (monthlySales * 0.01));
-        }
-
-        const profit = revenue - expenses;
-        points.push({
-          name: `Month ${step}`,
-          profit: Math.round(profit),
-          marketShare: Math.round(Math.max(0, Math.min(100, marketShare))),
-          revenue: Math.round(revenue),
-          expenses: Math.round(expenses),
-          customers: Math.round(Math.max(0, customers))
-        });
-      }
+      const points = (result.projections || []).map(p => ({
+        name: `Month ${p.month}`,
+        profit: p.profit,
+        revenue: p.revenue,
+        expenses: p.expenses,
+        marketShare: p.marketShare,
+        customers: p.customers
+      }));
 
       setSimulationData(points);
 
-      // Dynamic AI suggestions matching selection
-      const firstRivalMm = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "ပြိုင်ဘက်များ";
-      const firstRivalEn = businessProfile?.rivals && businessProfile.rivals.length > 0 ? businessProfile.rivals[0].name : "rivals";
-
-      let recommendationText = "";
-      if (targetScenario.includes('Price') || targetScenario.includes('Cut')) {
-        recommendationText = language === 'mm'
-          ? `ပြိုင်ဘက် "${firstRivalMm}" ၏ ဈေးနှုန်းအားပြိုင်မှု (${ratios.competitors}%) ကြောင့် နောက် ၆ လအတွင်း အသားတင်အမြတ် ကျဆင်းသွားနိုင်ပါသည်။ စျေးနှုန်းလျှော့ချပြီး တိုက်ရိုက်ယှဉ်ပြိုင်မည့်အစား Viber/Telegram မှတဆင့် ဖောက်သည်ဟောင်းများအား အထူးသစ္စာရှိမှုအစီအစဉ် (Loyalty Program) များ ဖန်တီးပေးခြင်းဖြင့် ဈေးကွက်ဝေစုကို ထိန်းသိမ်းရန် အကြံပြုအပ်ပါသည်။ ၎င်းသည် သင်ခန့်မှန်းထားသော "${expectedResult}" ရလဒ်ထက် ပိုမိုကောင်းမွန်စေပါမည်။`
-          : `High competitive pressure (${ratios.competitors}%) from "${firstRivalEn}" will likely erode net profit within 6 months. Rather than engaging in direct price wars, we recommend launching exclusive loyalty programs via Viber and Telegram channels to protect margins, helping mitigate the expected "${expectedResult}" outcome.`;
-      } else if (targetScenario.includes('Credit') || targetScenario.includes('Demand')) {
-        recommendationText = language === 'mm'
-          ? `ဖောက်သည်များ၏ အကြွေးဝယ်ယူလိုအား တိုးတက်လာသဖြင့် ကုန်ကျစရိတ် မြင့်တက်လာနိုင်ပါသည်။ အကြွေးကို စနစ်တကျစီမံရန်အတွက် အမှာစာအသစ်များ၏ ၂၀% အား လက်ငင်းငွေချေစနစ်ဖြင့် ပေးချေစေခြင်း သို့မဟုတ် အရောင်းပမာဏများပြားသော ဖောက်သည်အချို့ကိုသာ ကန့်သတ်ခွင့်ပြုရန် အကြံပြုပါသည်။ ၎င်းသည် "${expectedResult}" ဖြစ်ပေါ်မှုမှ ကာကွယ်ပေးပါမည်။`
-          : `High credit demands are projected to inflate operating overheads. To manage outstanding cash safely, implement a policy requiring at least 20% down-payment on new cargo orders, protecting the store from the expected "${expectedResult}" scenario.`;
-      } else {
-        recommendationText = language === 'mm'
-          ? `ထောက်ပံ့ပို့ဆောင်ရေးကုန်ကျစရိတ်များ မြင့်တက်မှုနှင့် စျေးကွက်အပြောင်းအလဲများ ရှိနေသော်လည်း အရောင်းရငွေအား တည်ငြိမ်အောင် ထိန်းထားနိုင်ပါသည်။ ကုန်ပစ္စည်းပြတ်လပ်မှုအန္တရာယ်မှ ကာကွယ်ရန် ကုန်ပစ္စည်းသိုလှောင်မှု ပမာဏကို ၁၅% ခန့် တိုးမြှင့်စုဆောင်းထားရန် အကြံပြုအပ်ပါသည်။ ၎င်းသည် "${expectedResult}" ကို လျှော့ချပေးပါမည်။`
-          : `Supply chain bottlenecks are driving operational expenses upward. To prevent stockouts on key high-margin goods, consider diversifying suppliers and building a 15% safety stock buffer for core inventory products, directly addressing "${expectedResult}".`;
-      }
+      const aiVerdict = language === 'mm'
+        ? (result.verdictMm || result.verdict)
+        : (result.verdictEn || result.verdict);
 
       setVerdictData({
-        confidence: result.confidence || 0.85,
-        verdict: recommendationText,
+        confidence: result.confidence || 85,
+        verdict: aiVerdict,
         criticalAgents: result.criticalAgents || [],
         aiInsights: [
           {

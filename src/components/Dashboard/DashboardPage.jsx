@@ -15,29 +15,20 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
   const navigate = useNavigate();
   const t = translations[language] || translations['en'];
 
-  if (!dashboardData) {
-    return <div className="p-8 text-center text-txt-secondary mono text-sm">Loading dashboard...</div>;
-  }
-
-  const {
-    metrics,
-    availablePeriods = [],
-    chartData,
-    networkItems,
-    attentionItems,
-    topProducts
-  } = dashboardData;
-
-  const { dailySales, weeklySales, monthlySales, yearlySales, monthlyExpenses, netProfit, itemsLowCount } = metrics;
-
   // 1. Chart Choices
   const chartChoices = [];
-  if (chartData && chartData.length > 0) {
-    chartChoices.push('history');
+  if (dashboardData) {
+    const {
+      availablePeriods = [],
+      chartData
+    } = dashboardData;
+    if (chartData && chartData.length > 0) {
+      chartChoices.push('history');
+    }
+    (availablePeriods || []).forEach(p => {
+      chartChoices.push(p);
+    });
   }
-  availablePeriods.forEach(p => {
-    chartChoices.push(p);
-  });
 
   // State for active chart choice
   const [activeChartPeriod, setActiveChartPeriod] = React.useState(() => {
@@ -50,6 +41,20 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
       setActiveChartPeriod(chartChoices[0]);
     }
   }, [dashboardData]);
+
+  if (!dashboardData) {
+    return <div className="p-8 text-center text-txt-secondary mono text-sm">Loading dashboard...</div>;
+  }
+
+  const {
+    metrics,
+    chartData,
+    networkItems,
+    attentionItems,
+    topProducts
+  } = dashboardData;
+
+  const { dailySales, weeklySales, monthlySales, yearlySales, monthlyExpenses, netProfit, itemsLowCount } = metrics;
 
   // Sinusoidal trend generator for manual periods
   const generateSimulatedData = (period, baseValue) => {

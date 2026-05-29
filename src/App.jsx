@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import api from './services/api';
 import Onboarding from './components/Onboarding/Onboarding';
 import Layout from './components/Layout/Layout';
@@ -44,9 +44,11 @@ export default function App() {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch workspace data on mount and when businessProfile updates
   useEffect(() => {
+    if (!location.pathname.startsWith('/workspace')) return;
     async function load() {
       const data = await api.getWorkspaceData(businessProfile);
       setBaseWorkspace(data);
@@ -56,7 +58,7 @@ export default function App() {
       setBaseInsights(insights);
     }
     load();
-  }, [businessProfile, language]);
+  }, [businessProfile, language, location.pathname]);
 
   // Compute dynamic workspace data (no longer split by activeHistoryId)
   useEffect(() => {
