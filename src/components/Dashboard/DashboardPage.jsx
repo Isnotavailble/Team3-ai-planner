@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, ArrowRight, AlertCircle, ShoppingBag, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { translations } from '../../data/translations';
+import DashboardSkeleton from './DashboardSkeleton';
 
 const iconMap = {
   AlertCircle: AlertCircle,
@@ -43,7 +44,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
   }, [dashboardData]);
 
   if (!dashboardData) {
-    return <div className="p-8 text-center text-txt-secondary mono text-sm">Loading dashboard...</div>;
+    return <DashboardSkeleton />;
   }
 
   const {
@@ -202,10 +203,12 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
         </div>
       </section>
 
-      {/* 4. CHARTS AND TOP PRODUCTS ROW */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+      {/* 4. LOWER DASHBOARD */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
         
-        {/* Left Column: Sales Chart */}
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Left Column: Sales Chart */}
         <section className="space-y-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
             <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
@@ -267,10 +270,13 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
+                    tickFormatter={(value) => `${value} MMK`}
                     tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
                     dx={-10}
+                    width={80}
                   />
                   <Tooltip 
+                    formatter={(value) => [`${value} MMK`, language === 'mm' ? "အရောင်း (Sales)" : "Sales"]}
                     contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
                     itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                     cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '3 3' }}
@@ -286,54 +292,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
           </div>
         </section>
 
-        {/* Right Column: Top Products list */}
-        <section className="space-y-4">
-          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            {t.topProductsTitle || "အရောင်းရဆုံး ပစ္စည်းများ"}
-          </h3>
-          <div style={{
-            background: 'var(--bg-surface)',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid var(--border-default)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            height: '240px',
-            overflowY: 'auto'
-          }}>
-            {topProducts && topProducts.length > 0 ? topProducts.map((prod, idx) => (
-              <div 
-                key={idx} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  padding: '12px 0', 
-                  borderBottom: idx === topProducts.length - 1 ? 'none' : '1px solid var(--border-default)'
-                }}
-              >
-                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {language === 'mm' ? prod.nameMm : prod.nameEn}
-                </span>
-                <span className="font-number" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {prod.value}
-                </span>
-              </div>
-            )) : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
-              </div>
-            )}
-          </div>
-        </section>
-
-      </div>
-
-      {/* 5. ALERTS AND BUSINESS NETWORK ROW */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
-        
-        {/* Left Column: Needs Attention Queue (Raw Icons) */}
+          {/* Left Column: Needs Attention Queue (Raw Icons) */}
         <section className="space-y-4">
           <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
             {t.needsAttentionTitle || "အထူးဂရုပြုရန်"}
@@ -377,8 +336,53 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
             )}
           </div>
         </section>
+        </div>
 
-        {/* Right Column: Business Network (Replacing Recent Activity) */}
+        {/* RIGHT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Right Column: Top Products list */}
+        <section className="space-y-4">
+          <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {t.topProductsTitle || "အရောင်းရဆုံး ပစ္စည်းများ"}
+          </h3>
+          <div style={{
+            background: 'var(--bg-surface)',
+            borderRadius: '12px',
+            padding: '16px',
+            border: '1px solid var(--border-default)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            height: '240px',
+            overflowY: 'auto'
+          }}>
+            {topProducts && topProducts.length > 0 ? topProducts.map((prod, idx) => (
+              <div 
+                key={idx} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '12px 0', 
+                  borderBottom: idx === topProducts.length - 1 ? 'none' : '1px solid var(--border-default)'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {language === 'mm' ? prod.nameMm : prod.nameEn}
+                </span>
+                <span className="font-number" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {prod.value}
+                </span>
+              </div>
+            )) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
+              </div>
+            )}
+          </div>
+        </section>
+
+          {/* Right Column: Business Network (Replacing Recent Activity) */}
         <section className="space-y-4">
           <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
             {language === 'mm' ? "လုပ်ငန်းကွန်ရက်" : "Business Network"}
@@ -424,7 +428,7 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
             )}
           </div>
         </section>
-
+        </div>
       </div>
 
     </div>

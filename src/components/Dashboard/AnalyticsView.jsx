@@ -4,6 +4,7 @@ import { Play, Cpu, Sparkles, TrendingUp, Users, ShieldAlert, FileText, Activity
 import { translations } from '../../data/translations';
 import api from '../../services/api';
 import SimulationSkeleton from '../AIReportPage/SimulationSkeleton';
+import AnalyticsSkeleton from './AnalyticsSkeleton';
 
 export default function AnalyticsView({ 
   workspace = {}, 
@@ -11,9 +12,13 @@ export default function AnalyticsView({
   onStartInterrogation, 
   language = 'mm',
   baseInsights: propBaseInsights,
-  setBaseInsights: propSetBaseInsights
+  setBaseInsights: propSetBaseInsights,
+  isLoading = false
 }) {
   const t = translations[language];
+
+
+
   const [stage, setStage] = useState('setup'); // 'setup' | 'running' | 'results'
   const [logs, setLogs] = useState([]);
   const [progress, setProgress] = useState(0);
@@ -227,6 +232,10 @@ export default function AnalyticsView({
       setStage('setup');
     }
   };
+
+  if (isLoading) {
+    return <AnalyticsSkeleton />;
+  }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>

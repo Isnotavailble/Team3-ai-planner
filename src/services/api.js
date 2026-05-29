@@ -4,6 +4,7 @@ import { mapToEdgeDTO } from '../dtos/edge.dto';
 import { mapToSimulationDTO } from '../dtos/simulation.dto';
 import { mapToDashboardDTO } from '../dtos/dashboard.dto';
 import { mapToInsightsDTO } from '../dtos/insights.dto';
+import { supabase } from '../utils/supabaseClient';
 import {
   RAW_ENTITIES,
   RAW_EDGES,
@@ -13,6 +14,67 @@ import {
 } from '../data/mockData';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1/api';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+axios.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
+
+export function calculateMissingSales(sales) {
+  const cleanSales = { daily: null, weekly: null, monthly: null, yearly: null };
+  if (!sales) return cleanSales;
+
+  const daily = parseFloat(sales.daily) || null;
+  const weekly = parseFloat(sales.weekly) || null;
+  const monthly = parseFloat(sales.monthly) || null;
+  const yearly = parseFloat(sales.yearly) || null;
+
+  if (daily > 0 && !weekly && !monthly && !yearly) {
+    cleanSales.daily = daily;
+    cleanSales.weekly = daily * 7;
+    cleanSales.monthly = daily * 30;
+    cleanSales.yearly = daily * 365;
+  } else if (weekly > 0 && !daily && !monthly && !yearly) {
+    cleanSales.weekly = weekly;
+    cleanSales.daily = Math.round(weekly / 7);
+    cleanSales.monthly = Math.round(weekly * 4.33);
+    cleanSales.yearly = Math.round(weekly * 52);
+  } else if (monthly > 0 && !daily && !weekly && !yearly) {
+    cleanSales.monthly = monthly;
+    cleanSales.daily = Math.round(monthly / 30);
+    cleanSales.weekly = Math.round(monthly / 4.33);
+    cleanSales.yearly = Math.round(monthly * 12);
+  } else if (yearly > 0 && !daily && !weekly && !monthly) {
+    cleanSales.yearly = yearly;
+    cleanSales.daily = Math.round(yearly / 365);
+    cleanSales.weekly = Math.round(yearly / 52);
+    cleanSales.monthly = Math.round(yearly / 12);
+  } else {
+    cleanSales.daily = daily;
+    cleanSales.weekly = weekly;
+    cleanSales.monthly = monthly;
+    cleanSales.yearly = yearly;
+
+    if (monthly > 0) {
+      if (!cleanSales.daily) cleanSales.daily = Math.round(monthly / 30);
+      if (!cleanSales.weekly) cleanSales.weekly = Math.round(monthly / 4.33);
+      if (!cleanSales.yearly) cleanSales.yearly = Math.round(monthly * 12);
+    } else if (weekly > 0) {
+      if (!cleanSales.daily) cleanSales.daily = Math.round(weekly / 7);
+      if (!cleanSales.monthly) cleanSales.monthly = Math.round(weekly * 4.33);
+      if (!cleanSales.yearly) cleanSales.yearly = Math.round(weekly * 52);
+    } else if (yearly > 0) {
+      if (!cleanSales.daily) cleanSales.daily = Math.round(yearly / 365);
+      if (!cleanSales.weekly) cleanSales.weekly = Math.round(yearly / 52);
+      if (!cleanSales.monthly) cleanSales.monthly = Math.round(yearly / 12);
+    }
+  }
+  return cleanSales;
+}
 
 class LatticeApiService {
   constructor() {
@@ -22,30 +84,48 @@ class LatticeApiService {
     this.simResults = { ...RAW_SIM_RESULTS };
   }
 
+  async uploadSalesFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await axios.post(`${API_URL}/upload-sales`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (e) {
+      console.error('Failed to upload sales file:', e);
+      throw e;
+    }
+  }
+
   validateProfile(profile) {
+    const calculatedSales = calculateMissingSales(profile?.sales);
+
     const validated = {
-      product: 'Clothing Apparel',
-      hasPOS: true,
-      sales: { monthly: 12000, daily: 400, weekly: 3000, yearly: 140000 },
-      expenses: 8000,
+      product: null,
+      hasPOS: null,
+      sales: { monthly: null, daily: null, weekly: null, yearly: null },
+      expenses: null,
       rivals: [],
       customers: [],
       products: [],
       suppliers: [],
       salesHistory: [],
-      targetScenario: 'Competitor Price Cut',
-      expectedResult: 'Less Profit',
-      thresholds: { inventoryLow: 10 },
+      targetScenario: null,
+      expectedResult: null,
+      thresholds: { inventoryLow: null },
       ...profile
     };
 
     // Ensure nested objects are initialized
     validated.sales = {
-      monthly: 12000,
-      daily: 400,
-      weekly: 3000,
-      yearly: 140000,
-      ...(profile?.sales || {})
+      monthly: null,
+      daily: null,
+      weekly: null,
+      yearly: null,
+      ...calculatedSales
     };
 
     // Ensure array fields are actually arrays
@@ -56,56 +136,61 @@ class LatticeApiService {
     if (!Array.isArray(validated.salesHistory)) validated.salesHistory = [];
 
     // Clean up numeric values
-    validated.expenses = parseFloat(validated.expenses) || 0;
+    validated.expenses = profile?.expenses !== undefined && profile.expenses !== null ? parseFloat(validated.expenses) || 0 : null;
     for (const key in validated.sales) {
-      validated.sales[key] = parseFloat(validated.sales[key]) || 0;
+      if (validated.sales[key] !== null) {
+        validated.sales[key] = parseFloat(validated.sales[key]) || 0;
+      }
     }
 
     return validated;
   }
 
-  async getWorkspaceData(businessProfile) {
+  async getWorkspaceData(businessProfile, isUpdate = false) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { entities: [], edges: [], materials: [], profile: null };
+    }
     const cleanProfile = this.validateProfile(businessProfile);
     try {
-      const response = await axios.post(`${API_URL}/workspace`, { businessProfile: cleanProfile });
+      const response = await axios.post(`${API_URL}/workspace`, { businessProfile: cleanProfile, isUpdate });
       const data = response.data;
       return {
         entities: (data.entities || []).map(mapToEntityDTO),
         edges: (data.edges || []).map(mapToEdgeDTO),
-        materials: data.materials || this.materials
+        materials: data.materials || [],
+        profile: data.profile
       };
     } catch (e) {
-      console.warn('Backend unavailable, falling back to mock workspace data', e);
+      console.warn('Backend unavailable or error', e);
+      return { entities: [], edges: [], materials: [], profile: null };
     }
-    // Fallback if backend is down
-    return {
-      entities: this.entities.map(mapToEntityDTO),
-      edges: this.edges.map(mapToEdgeDTO),
-      materials: this.materials
-    };
   }
 
   async getDashboardData(businessProfile, language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
     const cleanProfile = this.validateProfile(businessProfile);
     try {
       const response = await axios.post(`${API_URL}/dashboard`, { businessProfile: cleanProfile, language });
       return response.data;
     } catch (e) {
-      console.warn('Backend unavailable, falling back to mock dashboard data', e);
+      console.warn('Backend unavailable or error', e);
+      return null;
     }
-    // Fallback if backend is down
-    return mapToDashboardDTO(cleanProfile, language);
   }
 
   async getInsights(businessProfile, language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
     const cleanProfile = this.validateProfile(businessProfile);
     try {
       const response = await axios.post(`${API_URL}/insights`, { businessProfile: cleanProfile, language });
       return mapToInsightsDTO(response.data, language);
     } catch (e) {
-      console.warn('Backend unavailable, falling back to mock insights data', e);
+      console.warn('Backend unavailable or error', e);
+      return null;
     }
-    return mapToInsightsDTO(RAW_INSIGHTS, language);
   }
 
   async importDocument({ fileType, fileName, url }) {
@@ -130,6 +215,8 @@ class LatticeApiService {
   }
 
   async runSimulation(branchId, agentRatios, profile = null) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
     const cleanProfile = this.validateProfile(profile);
     try {
       const response = await axios.post(`${API_URL}/simulate`, { 
@@ -138,29 +225,9 @@ class LatticeApiService {
       });
       return response.data;
     } catch (e) {
-      console.warn('Backend unavailable, falling back to mock simulation', e);
+      console.warn('Backend unavailable or error', e);
+      return null;
     }
-    
-    // Fallback Mock Logic
-    const rawResult = JSON.parse(JSON.stringify(this.simResults['main']));
-    
-    // Inject a default projections array to prevent crashes on fallback
-    const monthlySales = cleanProfile?.sales?.monthly || 12000;
-    const monthlyExpenses = cleanProfile?.expenses || 8000;
-    const initialCustomers = cleanProfile?.customers?.length * 12 || 180;
-    
-    rawResult.projections = [];
-    for (let m = 1; m <= 6; m++) {
-      const factor = 1 + (m * 0.02) * (agentRatios.customers / 100 - agentRatios.competitors / 200);
-      const revenue = Math.round(monthlySales * factor);
-      const expenses = Math.round(monthlyExpenses * (1 + (m * 0.01) * (1 - agentRatios.distributors / 100)));
-      const profit = revenue - expenses;
-      const marketShare = Math.round(Math.max(10, Math.min(95, 60 + m * (agentRatios.customers / 150 - agentRatios.competitors / 200))));
-      const customers = Math.round(initialCustomers * factor);
-      rawResult.projections.push({ month: m, revenue, expenses, profit, marketShare, customers });
-    }
-    
-    return rawResult;
   }
 
   async sendChatMessage(agentId, messages) {

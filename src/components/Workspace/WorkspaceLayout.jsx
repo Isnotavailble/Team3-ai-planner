@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Home, BarChart2, TrendingUp, Settings } from 'lucide-react';
-import WorkspaceSkeleton from './WorkspaceSkeleton';
 import { translations } from '../../data/translations';
 
 export default function WorkspaceLayout({
   workspace,
-  isHistoryLoading,
   language = 'mm'
 }) {
   const navigate = useNavigate();
@@ -139,11 +137,7 @@ export default function WorkspaceLayout({
           transition: 'left 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
-        {isHistoryLoading ? (
-          <WorkspaceSkeleton pathname={location.pathname} />
-        ) : (
-          <Outlet />
-        )}
+        <Outlet />
       </div>
     </div>
   );

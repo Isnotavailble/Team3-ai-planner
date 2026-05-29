@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowDownRight, ArrowUpRight, DollarSign, Download, Calendar } from 'lucide-react';
 import { translations } from '../../data/translations';
+import DashboardSkeleton from './DashboardSkeleton';
 
-export default function ReportsView({ workspace = {}, businessProfile = {}, language = 'mm' }) {
+export default function ReportsView({ workspace = {}, businessProfile = {}, language = 'mm', isLoading = false }) {
   const t = translations[language];
+
+
+
   const [period, setPeriod] = useState('monthly'); // 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   const [activeMetric, setActiveMetric] = useState('revenue'); // 'revenue' | 'expenses'
 
@@ -94,6 +98,10 @@ export default function ReportsView({ workspace = {}, businessProfile = {}, lang
     { type: 'income', descMm: "လက်ကား ရောင်းရငွေ", descEn: "Wholesale order payment", amount: "+1,200 MMK", time: "5 hours ago" },
     { type: 'expense', descMm: "စတိုးဆိုင် လျှပ်စစ်မီတာခ", descEn: "Shop electric utility bill", amount: "-250 MMK", time: "Yesterday" }
   ];
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
