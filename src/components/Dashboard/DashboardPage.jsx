@@ -1,47 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, ArrowRight, AlertCircle, ShoppingBag, TrendingUp } from 'lucide-react';
+import { User, ShoppingBag, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { translations } from '../../data/translations';
 import DashboardSkeleton from './DashboardSkeleton';
 
-const iconMap = {
-  AlertCircle: AlertCircle,
-  ShoppingBag: ShoppingBag,
-  TrendingUp: TrendingUp,
-  User: User
-};
-
 export default function DashboardPage({ workspace = {}, businessProfile = {}, dashboardData, selectedNodeId, handleSelectNode, language = 'mm' }) {
   const navigate = useNavigate();
   const t = translations[language] || translations['en'];
-
-  // 1. Chart Choices
-  const chartChoices = [];
-  if (dashboardData) {
-    const {
-      availablePeriods = [],
-      chartData
-    } = dashboardData;
-    if (chartData && chartData.length > 0) {
-      chartChoices.push('history');
-    }
-    (availablePeriods || []).forEach(p => {
-      chartChoices.push(p);
-    });
-  }
-
-  // State for active chart choice
-  const [activeChartPeriod, setActiveChartPeriod] = React.useState(() => {
-    return chartChoices[0] || null;
-  });
-
-  // Sync active period on update
-  React.useEffect(() => {
-    if (chartChoices.length > 0 && !chartChoices.includes(activeChartPeriod)) {
-      setActiveChartPeriod(chartChoices[0]);
-    }
-  }, [dashboardData]);
 
   if (!dashboardData) {
     return <DashboardSkeleton />;
@@ -51,57 +17,13 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
     metrics,
     chartData,
     networkItems,
-    attentionItems,
+    topCustomers,
     topProducts
   } = dashboardData;
 
   const { dailySales, weeklySales, monthlySales, yearlySales, monthlyExpenses, netProfit, itemsLowCount } = metrics;
 
-  // Sinusoidal trend generator for manual periods
-  const generateSimulatedData = (period, baseValue) => {
-    const dataPoints = [];
-    let count = 6;
-    let labelPrefix = '';
-
-    if (period === 'daily') {
-      count = 7;
-      labelPrefix = 'Day ';
-    } else if (period === 'weekly') {
-      count = 6;
-      labelPrefix = 'Week ';
-    } else if (period === 'monthly') {
-      count = 6;
-      labelPrefix = 'Month ';
-    } else if (period === 'yearly') {
-      count = 5;
-      labelPrefix = 'Year ';
-    }
-
-    for (let i = 1; i <= count; i++) {
-      // Sine wave with +-15% variation
-      const variance = Math.sin(i * 1.2) * 0.15;
-      const value = Math.round(baseValue * (1 + variance));
-      dataPoints.push({
-        name: `${labelPrefix}${i}`,
-        sales: value
-      });
-    }
-    return dataPoints;
-  };
-
-  // Get active chart data
-  let activeChartData = [];
-  if (activeChartPeriod === 'history') {
-    activeChartData = chartData;
-  } else if (activeChartPeriod === 'daily' && dailySales !== null) {
-    activeChartData = generateSimulatedData('daily', dailySales);
-  } else if (activeChartPeriod === 'weekly' && weeklySales !== null) {
-    activeChartData = generateSimulatedData('weekly', weeklySales);
-  } else if (activeChartPeriod === 'monthly' && monthlySales !== null) {
-    activeChartData = generateSimulatedData('monthly', monthlySales);
-  } else if (activeChartPeriod === 'yearly' && yearlySales !== null) {
-    activeChartData = generateSimulatedData('yearly', yearlySales);
-  }
+  const hasSalesHistory = Array.isArray(chartData) && chartData.length > 0;
 
   // 2. Build dynamic KPI cards (Restricted to exactly 4 for the premium layout)
   const kpiCards = [];
@@ -214,51 +136,11 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
             <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
               {language === 'mm' ? "အရောင်း မှတ်တမ်း" : "Sales History"}
             </h3>
-            {chartChoices.length > 1 && (
-              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-default)' }}>
-                {chartChoices.map(choice => {
-                  let label = '';
-                  if (choice === 'history') {
-                    label = language === 'mm' ? 'တင်သွင်းမှု' : 'Imported';
-                  } else if (choice === 'daily') {
-                    label = language === 'mm' ? 'နေ့စဉ်' : 'Daily';
-                  } else if (choice === 'weekly') {
-                    label = language === 'mm' ? 'အပတ်စဉ်' : 'Weekly';
-                  } else if (choice === 'monthly') {
-                    label = language === 'mm' ? 'လစဉ်' : 'Monthly';
-                  } else if (choice === 'yearly') {
-                    label = language === 'mm' ? 'နှစ်စဉ်' : 'Yearly';
-                  }
-
-                  const isActive = activeChartPeriod === choice;
-                  return (
-                    <button
-                      key={choice}
-                      onClick={() => setActiveChartPeriod(choice)}
-                      style={{
-                        background: isActive ? 'var(--bg-surface)' : 'transparent',
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        fontWeight: isActive ? 600 : 500,
-                        cursor: 'pointer',
-                        boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
           <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-default)', height: '280px', boxShadow: '0 4px 24px rgba(0,0,0,0.02)' }}>
-            {activeChartData && activeChartData.length > 0 ? (
+            {hasSalesHistory ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activeChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-default)" strokeOpacity={0.5} />
                   <XAxis 
                     dataKey="name" 
@@ -304,29 +186,29 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
                 <div 
                   key={idx}
                   style={{
-                    background: 'var(--bg-surface)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    border: '1px solid var(--border-default)',
                     display: 'flex',
-                    alignItems: 'start',
-                    gap: '14px',
-                    cursor: 'pointer'
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 0',
+                    borderBottom: idx === topCustomers.length - 1 ? 'none' : '1px solid var(--border-default)'
                   }}
                 >
-                  {/* Raw inline icon without background circle */}
-                  <div style={{ color: item.color, flexShrink: 0, marginTop: '2px' }}>
-                    <ItemIcon size={18} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+                    <div style={{ color: 'var(--text-secondary)' }}>
+                      <User size={16} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {c.name}
+                      </p>
+                      <span className="mono" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                        {language === 'mm' ? "စုစုပေါင်း ဝယ်ယူမှု" : "Total purchases"}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {language === 'mm' ? item.titleMm : item.titleEn}
-                    </h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      {language === 'mm' ? item.descMm : item.descEn}
-                    </p>
+                  <div className="font-number" style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {Number(c.total || 0).toLocaleString()} MMK
                   </div>
-                  <ArrowRight size={14} style={{ color: 'var(--text-tertiary)', alignSelf: 'center' }} />
                 </div>
               );
             }) : (

@@ -63,7 +63,7 @@ export default function AIReportPage({ onStartInterrogation, businessProfile = {
                            (businessProfile?.sales?.weekly ? (businessProfile.sales.weekly / 7) * 30 : 0) || 
                            (businessProfile?.sales?.yearly ? businessProfile.sales.yearly / 12 : 0) || 
                            12000;
-      const monthlyExpenses = businessProfile?.expenses || 8000;
+      const monthlyExpenses = businessProfile?.expenses ?? 8000;
 
       const compRatio = hasRivals ? (ratios.competitors / 100) : 0.7; // default to 70% baseline risk if no rivals specified
       const custRatio = ratios.customers / 100;

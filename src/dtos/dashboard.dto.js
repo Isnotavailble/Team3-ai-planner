@@ -1,16 +1,47 @@
 export const mapToDashboardDTO = (businessProfile, language = 'mm') => {
   // Dynamic Metrics
-  let derivedDaily = 0;
-  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
-    const total = businessProfile.salesHistory.reduce((sum, h) => sum + (h.sales || 0), 0);
-    derivedDaily = Math.round(total / businessProfile.salesHistory.length);
+  // NOTE: salesHistory can be either:
+  // - daily aggregates: { date, sales, expenses }
+  // - transaction list: { date, customer|counterparty, sales|amount, expenses }
+  // We normalize it here.
+  const normalizedSalesHistory = Array.isArray(businessProfile?.salesHistory)
+    ? businessProfile.salesHistory
+    : [];
+
+  // Aggregate per day for chart
+  const dailyTotalsMap = new Map(); // date -> { sales, expenses }
+  for (const row of normalizedSalesHistory) {
+    const date =
+      row?.date ||
+      (row?.occurredAt ? String(row.occurredAt).split('T')[0] : null);
+    if (!date) continue;
+
+    const salesVal = row?.sales ?? row?.amount ?? 0;
+    const expenseVal = row?.expenses ?? 0;
+
+    const prev = dailyTotalsMap.get(date) || { sales: 0, expenses: 0 };
+    dailyTotalsMap.set(date, {
+      sales: prev.sales + (Number(salesVal) || 0),
+      expenses: prev.expenses + (Number(expenseVal) || 0)
+    });
   }
 
-  const dailySales = derivedDaily || businessProfile?.sales?.daily || null;
+  const dailyTotals = Array.from(dailyTotalsMap.entries())
+    .map(([date, v]) => ({ date, ...v }))
+    .sort((a, b) => (a.date > b.date ? 1 : -1));
+
+  // Derived daily sales average from available salesHistory
+  let derivedDaily = null;
+  if (dailyTotals.length > 0) {
+    const total = dailyTotals.reduce((sum, h) => sum + (h.sales || 0), 0);
+    derivedDaily = Math.round(total / dailyTotals.length);
+  }
+
+  const dailySales = derivedDaily ?? businessProfile?.sales?.daily ?? null;
   const weeklySales = businessProfile?.sales?.weekly || null;
   const monthlySales = businessProfile?.sales?.monthly || null;
   const yearlySales = businessProfile?.sales?.yearly || null;
-  const monthlyExpenses = businessProfile?.expenses || null;
+  const monthlyExpenses = businessProfile?.expenses ?? null;
   const netProfit = (monthlySales !== null && monthlyExpenses !== null) ? monthlySales - monthlyExpenses : null;
 
   const availablePeriods = [];
@@ -20,11 +51,11 @@ export const mapToDashboardDTO = (businessProfile, language = 'mm') => {
   if (yearlySales !== null) availablePeriods.push('yearly');
 
   let chartData = [];
-  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
-    chartData = businessProfile.salesHistory.map(h => ({
+  if (dailyTotals.length > 0) {
+    chartData = dailyTotals.map(h => ({
       name: h.date,
       sales: h.sales
-    })).reverse();
+    }));
   }
 
   // Business Network
@@ -50,36 +81,21 @@ export const mapToDashboardDTO = (businessProfile, language = 'mm') => {
     });
   }
 
-  // Needs Attention items (Mocked AI Responses)
-  const attentionItems = [
-    { 
-      type: 'receivables', 
-      titleMm: "ဦးအောင်ကျော် - ပေးရန်ကျန်ငွေ ရက်လွန်နေသည်", 
-      titleEn: "U Aung Kyaw - Receivable outstanding", 
-      descMm: "၁၅ ရက်ကျော် ရက်လွန်နေသဖြင့် အကြောင်းကြားရန် လိုအပ်သည်", 
-      descEn: "Overdue by 15 days, send reminder", 
-      icon: 'AlertCircle', 
-      color: 'var(--caution)' 
-    },
-    { 
-      type: 'inventory', 
-      titleMm: "ဆန်ကုန်စည်လက်ကျန် နည်းနေပါသည်", 
-      titleEn: "Rice bags inventory level low", 
-      descMm: "လက်ကျန် ၃ အိတ်သာရှိတော့သဖြင့် ထပ်မံမှာယူရန် အကြံပြုပါသည်", 
-      descEn: "Only 3 bags left, reorder threshold reached", 
-      icon: 'ShoppingBag', 
-      color: 'var(--critical)' 
-    },
-    { 
-      type: 'competitor', 
-      titleMm: "ပြိုင်ဘက် ဆိုင်ကြီး မှ စျေးနှုန်း ၅% လျှော့ချလိုက်သည်", 
-      titleEn: "Rival Shop cut prices by 5%", 
-      descMm: "စက်ဆန်းရပ်ကွက်ရှိ ဆိုင်ကြီးမှ ဆန်စျေးနှုန်းများ စတင်လျှော့ချလာသည်", 
-      descEn: "Competitor price drop detected in neighboring ward", 
-      icon: 'TrendingUp', 
-      color: 'var(--accent)' 
+  // Top customers (based on salesHistory transaction/customer fields)
+  let topCustomers = [];
+  if (normalizedSalesHistory.length > 0) {
+    const totals = new Map(); // customer -> total sales
+    for (const row of normalizedSalesHistory) {
+      const customer = row?.customer || row?.counterparty;
+      if (!customer) continue;
+      const salesVal = row?.sales ?? row?.amount ?? 0;
+      totals.set(customer, (totals.get(customer) || 0) + (Number(salesVal) || 0));
     }
-  ];
+    topCustomers = Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, total]) => ({ name, total }));
+  }
 
   // Top products
   const topProducts = [];
@@ -110,7 +126,7 @@ export const mapToDashboardDTO = (businessProfile, language = 'mm') => {
     availablePeriods,
     chartData,
     networkItems,
-    attentionItems,
+    topCustomers,
     topProducts
   };
 };
