@@ -1,12 +1,18 @@
+import axios from 'axios';
 import { mapToEntityDTO } from '../dtos/entity.dto';
 import { mapToEdgeDTO } from '../dtos/edge.dto';
 import { mapToSimulationDTO } from '../dtos/simulation.dto';
+import { mapToDashboardDTO } from '../dtos/dashboard.dto';
+import { mapToInsightsDTO } from '../dtos/insights.dto';
 import {
   RAW_ENTITIES,
   RAW_EDGES,
   RAW_MATERIALS,
-  RAW_SIM_RESULTS
+  RAW_SIM_RESULTS,
+  RAW_INSIGHTS
 } from '../data/mockData';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1/api';
 
 class LatticeApiService {
   constructor() {
@@ -16,8 +22,62 @@ class LatticeApiService {
     this.simResults = { ...RAW_SIM_RESULTS };
   }
 
-  async getWorkspaceData() {
-    await new Promise(resolve => setTimeout(resolve, 200));
+  validateProfile(profile) {
+    const validated = {
+      product: 'Clothing Apparel',
+      hasPOS: true,
+      sales: { monthly: 12000, daily: 400, weekly: 3000, yearly: 140000 },
+      expenses: 8000,
+      rivals: [],
+      customers: [],
+      products: [],
+      suppliers: [],
+      salesHistory: [],
+      targetScenario: 'Competitor Price Cut',
+      expectedResult: 'Less Profit',
+      thresholds: { inventoryLow: 10 },
+      ...profile
+    };
+
+    // Ensure nested objects are initialized
+    validated.sales = {
+      monthly: 12000,
+      daily: 400,
+      weekly: 3000,
+      yearly: 140000,
+      ...(profile?.sales || {})
+    };
+
+    // Ensure array fields are actually arrays
+    if (!Array.isArray(validated.rivals)) validated.rivals = [];
+    if (!Array.isArray(validated.customers)) validated.customers = [];
+    if (!Array.isArray(validated.products)) validated.products = [];
+    if (!Array.isArray(validated.suppliers)) validated.suppliers = [];
+    if (!Array.isArray(validated.salesHistory)) validated.salesHistory = [];
+
+    // Clean up numeric values
+    validated.expenses = parseFloat(validated.expenses) || 0;
+    for (const key in validated.sales) {
+      validated.sales[key] = parseFloat(validated.sales[key]) || 0;
+    }
+
+    return validated;
+  }
+
+  async getWorkspaceData(businessProfile) {
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/workspace`, { businessProfile: cleanProfile });
+      const data = response.data;
+      return {
+        entities: (data.entities || []).map(mapToEntityDTO),
+        edges: (data.edges || []).map(mapToEdgeDTO),
+        materials: data.materials || this.materials
+      };
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock workspace data', e);
+    }
+    // Fallback if backend is down
     return {
       entities: this.entities.map(mapToEntityDTO),
       edges: this.edges.map(mapToEdgeDTO),
@@ -25,10 +85,31 @@ class LatticeApiService {
     };
   }
 
-  async importDocument({ fileType, fileName, url }) {
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Parsing text...
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Extracting entities...
+  async getDashboardData(businessProfile, language = 'mm') {
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/dashboard`, { businessProfile: cleanProfile, language });
+      return response.data;
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock dashboard data', e);
+    }
+    // Fallback if backend is down
+    return mapToDashboardDTO(cleanProfile, language);
+  }
 
+  async getInsights(businessProfile, language = 'mm') {
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/insights`, { businessProfile: cleanProfile, language });
+      return mapToInsightsDTO(response.data, language);
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock insights data', e);
+    }
+    return mapToInsightsDTO(RAW_INSIGHTS, language);
+  }
+
+  async importDocument({ fileType, fileName, url }) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const docId = `doc-${Date.now()}`;
     const newMaterial = {
       id: docId,
@@ -37,62 +118,55 @@ class LatticeApiService {
       source: url || fileName || 'drag_drop_upload',
       uploaded: new Date().toISOString(),
       summary: `Auto-extracted B2B analysis of ${fileName || url}.`,
-      body: `Parsed content: local retailer requirements indicate high demand for supplier-backed credit accounts in Latha and Hlaing market coordinates.`,
+      body: `Parsed content placeholder.`,
       extracted: []
     };
-
-    const extractedIds = [];
-    if (fileType === 'pdf') {
-      extractedIds.push('yangon-shops', 'shop-1');
-    } else if (fileType === 'csv') {
-      extractedIds.push('mandalay-distrib', 'sz-ledger');
-    } else {
-      extractedIds.push('credit-reliance', 'competitor-a');
-    }
-
-    newMaterial.extracted = extractedIds;
     this.materials.unshift(newMaterial);
-
-    return {
-      material: newMaterial,
-      extractedEntities: extractedIds
-    };
+    return { material: newMaterial, extractedEntities: [] };
   }
 
   async mergeApprovedEntities(entityIds) {
-    await new Promise(resolve => setTimeout(resolve, 300));
     return { success: true, mergedCount: entityIds.length };
   }
 
-  async runSimulation(branchId, agentRatios) {
-    const totalRounds = 8;
-    const progressLogs = [];
-    
-    for (let round = 1; round <= totalRounds; round++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      progressLogs.push(`Round ${round}/${totalRounds}: Swarm agents reacting to inputs...`);
+  async runSimulation(branchId, agentRatios, profile = null) {
+    const cleanProfile = this.validateProfile(profile);
+    try {
+      const response = await axios.post(`${API_URL}/simulate`, { 
+        activeParameters: agentRatios, 
+        profile: cleanProfile
+      });
+      return response.data;
+    } catch (e) {
+      console.warn('Backend unavailable, falling back to mock simulation', e);
     }
-
-    const rawResult = this.simResults['main'];
-    return mapToSimulationDTO(rawResult);
+    
+    // Fallback Mock Logic
+    const rawResult = JSON.parse(JSON.stringify(this.simResults['main']));
+    
+    // Inject a default projections array to prevent crashes on fallback
+    const monthlySales = cleanProfile?.sales?.monthly || 12000;
+    const monthlyExpenses = cleanProfile?.expenses || 8000;
+    const initialCustomers = cleanProfile?.customers?.length * 12 || 180;
+    
+    rawResult.projections = [];
+    for (let m = 1; m <= 6; m++) {
+      const factor = 1 + (m * 0.02) * (agentRatios.customers / 100 - agentRatios.competitors / 200);
+      const revenue = Math.round(monthlySales * factor);
+      const expenses = Math.round(monthlyExpenses * (1 + (m * 0.01) * (1 - agentRatios.distributors / 100)));
+      const profit = revenue - expenses;
+      const marketShare = Math.round(Math.max(10, Math.min(95, 60 + m * (agentRatios.customers / 150 - agentRatios.competitors / 200))));
+      const customers = Math.round(initialCustomers * factor);
+      rawResult.projections.push({ month: m, revenue, expenses, profit, marketShare, customers });
+    }
+    
+    return rawResult;
   }
 
   async sendChatMessage(agentId, messages) {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    let responseText = '';
-
-    if (agentId === 'ag-zc-policy') {
-      responseText = `The Competitor Credit Policy is built to underwrite retail grocery accounts directly. If the primary platform matches credit terms, the system is designed to trigger automated extensions up to 30 days for high-volume shops to protect market share.`;
-    } else if (agentId === 'ag-latha') {
-      responseText = `Honestly, we prefer the platform's simple catalog, but running a store requires credit. If you roll out the supplier credit limits, we will shift all our grocery ordering back to your app.`;
-    } else {
-      responseText = `Local shop owners show high interest in catalog credit. Cash discounts help but do not solve daily cashflow gaps.`;
-    }
-
     return {
-      sender: agentId.toUpperCase().replace('AG-', '').replace('-', ' '),
-      text: responseText,
+      sender: agentId.toUpperCase(),
+      text: "Chat is currently disabled in backend architecture.",
       timestamp: new Date().toISOString()
     };
   }
@@ -100,4 +174,3 @@ class LatticeApiService {
 
 export const api = new LatticeApiService();
 export default api;
-

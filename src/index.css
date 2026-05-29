@@ -1,51 +1,65 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 :root {
-  /* Surface colors (Notion & Hugging Face inspired) */
-  --surface-page: #FCFCFA;
-  --surface-card: #FFFFFF;
-  --surface-panel: #F4F4F2;
-  --surface-hover: #EFEFEF;
-  --surface-active: #E5E5E2;
-  --surface-tooltip: #1E1E1E;
-
-  /* Text colors */
-  --text-primary: #1A1A19;
-  --text-secondary: #5C5C57;
-  --text-tertiary: #8E8D88;
-  --text-inverse: #FFFFFF;
+  /* Plum Linen Color Tokens modified for pure white background */
+  --bg-base: #FFFFFF;        /* pure white canvas */
+  --bg-surface: #FFFFFF;     /* cards, raised elements */
+  --bg-elevated: #F8F9FA;    /* subtle inset (slightly darker than white for contrast) */
+  --bg-gradient-1: linear-gradient(135deg, #F0E6F0 0%, #F7E8E0 50%, #FCEEE0 100%); /* soft plum-to-peach */
+  --bg-gradient-2: linear-gradient(180deg, #3A1A4A 0%, #2D1238 100%);             /* deep plum mic gradient */
+  --bg-icon-soft: #EDE4ED;   /* icon container soft plum */
+  --bg-icon-neutral: #F0EAE6;/* icon container neutral */
+  --bg-track: #EDE4ED;       /* progress bar tracks */
 
   /* Borders */
-  --border-light: #EBEBE9;
-  --border-default: #E1E1DD;
-  --border-dark: #A1A19D;
+  --border-default: #E8E0DA;
+  --border-hairline: rgba(0,0,0,0.05);
 
-  /* Entity colors (Vibrant, Semantic, Distinct) */
-  --entity-you: #0F172A; /* Slate 900 */
-  --entity-company: #DC2626; /* Red 600 - Competitors */
-  --entity-segment: #059669; /* Emerald 600 - Markets */
-  --entity-person: #0284C7; /* Sky 600 - People */
-  --entity-policy: #D97706; /* Amber 600 - Rules/Policies */
-  --entity-concept: #7C3AED; /* Violet 600 - Needs/Trends */
-  --entity-event: #E11D48; /* Rose 600 - Events */
-  --entity-product: #4F46E5; /* Indigo 600 - Products */
+  /* Text colors */
+  --text-primary: #2A1F2D;   /* deep plum-black */
+  --text-secondary: #7A6B7D; /* muted plum-brown */
+  --text-tertiary: #B5A8B8;  /* tertiary grey-plum */
+  --text-on-dark: #F8F4F1;
+  --text-inverse: #FFFFFF;
 
-  /* Accent highlights (very subtle) */
-  --accent: #2E5C8A; /* Muted corporate blue */
-  --accent-soft: #E8EEF5;
-  --accent-border: #B2C6DB;
+  /* Accents */
+  --accent: #6B2D7B;         /* rich plum brand color */
+  --accent-pressed: #4F1F5C;
+  --accent-soft: rgba(107, 45, 123, 0.12);
+  --accent-glow: rgba(107, 45, 123, 0.30);
+
+  /* Semantics */
+  --positive: #5C7B6B;       /* sage green */
+  --caution: #C97755;        /* muted terracotta */
+  --critical: #A33D5C;       /* muted rose */
+
+  /* Aliases for backwards compatibility */
+  --surface-page: var(--bg-base);
+  --surface-card: var(--bg-surface);
+  --surface-panel: var(--bg-elevated);
+  --surface-hover: #F0EAE6;
+  --surface-active: #EDE4ED;
+  --surface-tooltip: #2A1F2D;
+
+  --border-light: var(--border-default);
+  --border-dark: var(--text-tertiary);
+
+  /* Entity colors */
+  --entity-you: var(--text-primary);
+  --entity-company: var(--critical);
+  --entity-segment: var(--positive);
+  --entity-person: #7A8FB8;
+  --entity-policy: var(--caution);
+  --entity-concept: var(--accent);
+  --entity-event: #B85C8E;
+  --entity-product: var(--accent);
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: 'Inter', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  --font-number: 'Roboto', sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -75,6 +89,11 @@ button, input, textarea, select {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+}
+
+.font-number {
+  font-family: var(--font-number);
+  font-weight: 500;
 }
 
 /* Custom Scrollbar */
@@ -195,4 +214,43 @@ button, input, textarea, select {
   background: rgba(230, 240, 255, 0.8);
   border-color: var(--accent);
   transform: scale(1.02);
+}
+
+/* Shimmer Animation & Skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-panel) 25%,
+    var(--border-light) 50%,
+    var(--surface-panel) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-text {
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+  width: 100%;
+}
+
+.skeleton-title {
+  height: 20px;
+  border-radius: 6px;
+  display: inline-block;
+  width: 60%;
+}
+
+.skeleton-circle {
+  border-radius: 50%;
 }

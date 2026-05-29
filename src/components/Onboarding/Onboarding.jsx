@@ -1,475 +1,893 @@
-import React, { useState, useEffect } from 'react';
-import { FileUp, Link2, CheckSquare, Square, ChevronRight, Info, Lock, Clock, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileUp, ChevronRight, ChevronLeft, Sparkles, Check, Plus, Trash2, Monitor, Book } from 'lucide-react';
+import { translations } from '../../data/translations';
+import { importSalesFile } from '../../utils/salesImporter';
 
-export default function Onboarding({ onImportComplete, onSkipToSandbox }) {
-  const [manualText, setManualText] = useState('');
-  const [urlInput, setUrlInput] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null); 
-  const [importStatus, setImportStatus] = useState(null); 
-  const [detectedEntities, setDetectedEntities] = useState([]);
-  const [approvedEntities, setApprovedEntities] = useState(new Set());
+export default function Onboarding({ onImportComplete, language = 'mm' }) {
+  const t = translations[language] || translations['en']; // Fallback
+  
+  // Form Wizard Steps (0 to 10)
+  const [step, setStep] = useState(0);
+  const [errors, setErrors] = useState({});
+  const [focusField, setFocusField] = useState(null);
 
-  // --- New Feature States ---
-  const [rightMode, setRightMode] = useState('prompt'); // 'prompt' or 'guided'
-  const [guidedStep, setGuidedStep] = useState(0);
-  const [guidedInputText, setGuidedInputText] = useState('');
-  const [setupStatus, setSetupStatus] = useState(null); // 'loading', null
-  const [setupProgressText, setSetupProgressText] = useState('');
+  // Profile Form States
+  const [product, setProduct] = useState('');
+  const [hasPOS, setHasPOS] = useState(false);
+  const [selectedPeriods, setSelectedPeriods] = useState(['Monthly']);
+  const [salesData, setSalesData] = useState({ daily: '', weekly: '', monthly: '12000', yearly: '' });
+  const [expenses, setExpenses] = useState('8000');
+  const [rivals, setRivals] = useState([]);
+  const [newRivalName, setNewRivalName] = useState('');
+  const [newRivalPricing, setNewRivalPricing] = useState('Same price as our product');
 
-  const questions = [
-    {
-      id: 'market',
-      text: "What is your primary market segment?",
-      options: ["Retail Groceries", "Wholesale Distribution", "Direct to Consumer"]
-    },
-    {
-      id: 'competitor',
-      text: "Who are your main competitive pressures?",
-      options: ["Competitor Platform", "Local Cash Distributors", "None / Blue Ocean"]
-    },
-    {
-      id: 'credit',
-      text: "Do you offer credit or delayed payment terms?",
-      options: ["Yes, 30-day terms", "Cash on Delivery Only", "Digital Payments"]
+  const handleAddCompetitor = () => {
+    if (newRivalName.trim()) {
+      setRivals([...rivals, {
+        id: Date.now(),
+        name: newRivalName.trim(),
+        pricing: newRivalPricing,
+        audience: 'SMB Retailers'
+      }]);
+      setNewRivalName('');
     }
-  ];
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
+  // New Data Gaps states
+  const [customers, setCustomers] = useState([]);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerContact, setNewCustomerContact] = useState('');
+
+  const [productsList, setProductsList] = useState([]);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+
+  const [suppliers, setSuppliers] = useState([]);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierProducts, setNewSupplierProducts] = useState('');
+  const [newSupplierContact, setNewSupplierContact] = useState('');
+
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [filePreview, setFilePreview] = useState(null);
+
+  // Mask contact for privacy
+  const maskContact = (contact) => {
+    if (!contact) return '';
+    if (contact.includes('@')) {
+      const [name, domain] = contact.split('@');
+      return `${name[0]}***@${domain}`;
+    }
+    // Assume phone number
+    if (contact.length > 4) {
+      return `***-***-${contact.slice(-4)}`;
+    }
+    return '***';
   };
 
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const file = e.dataTransfer.files[0];
+  const handleAddCustomer = () => {
+    if (newCustomerName) {
+      setCustomers([...customers, { id: Date.now(), type: 'customer', name: newCustomerName, contact: newCustomerContact }]);
+      setNewCustomerName('');
+      setNewCustomerContact('');
+    }
+  };
+
+  const handleAddProductList = () => {
+    if (newProductName && newProductPrice) {
+      setProductsList([...productsList, { id: Date.now(), type: 'product', name: newProductName, price: parseFloat(newProductPrice) || 0 }]);
+      setNewProductName('');
+      setNewProductPrice('');
+    }
+  };
+
+  const handleAddSupplier = () => {
+    if (newSupplierName) {
+      setSuppliers([...suppliers, { 
+        id: Date.now(), 
+        type: 'supplier', 
+        name: newSupplierName, 
+        products: newSupplierProducts.split(',').map(s => s.trim()).filter(Boolean),
+        contactMasked: maskContact(newSupplierContact)
+      }]);
+      setNewSupplierName('');
+      setNewSupplierProducts('');
+      setNewSupplierContact('');
+    }
+  };
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
-
-    const extension = file.name.split('.').pop().toLowerCase();
-    if (extension !== 'pdf' && extension !== 'csv') {
-      alert('We expect a PDF transaction log or CSV inventory sheet.');
-      return;
+    try {
+      const data = await importSalesFile(file);
+      setSalesHistory(data);
+      setFilePreview(data.slice(0, 5)); // show first 5
+    } catch (err) {
+      alert(err.message);
     }
-
-    startImportProcess({ fileType: extension, fileName: file.name });
   };
 
-  const handleUrlSubmit = (e) => {
-    e.preventDefault();
-    if (!urlInput) return;
-    startImportProcess({ url: urlInput });
+  const validateStep = () => {
+    const newErrors = {};
+    if (step === 0 && !product.trim()) newErrors.product = language === 'mm' ? "ထုတ်ကုန်အမည် ဖြည့်သွင်းရန် လိုအပ်ပါသည်" : "Product name is required";
+    if (step === 2 && selectedPeriods.length === 0) newErrors.periods = language === 'mm' ? "အနည်းဆုံးတစ်ခု ရွေးချယ်ပါ" : "Select at least one period";
+    if (step === 3) {
+      selectedPeriods.forEach(p => {
+        const val = salesData[p.toLowerCase()];
+        if (!val || isNaN(val) || parseFloat(val) <= 0) newErrors[p] = "Enter valid amount";
+      });
+    }
+    if (step === 4 && (!expenses || isNaN(expenses) || parseFloat(expenses) < 0)) {
+      newErrors.expenses = "Enter valid expense";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const startImportProcess = async (params) => {
-    setImportStatus('parsing');
-    setUploadProgress({ step: 'Reading B2B supplier sheets...', value: 30 });
-    
-    setTimeout(() => {
-      setUploadProgress({ step: 'Mapping local retailers & terms...', value: 70 });
-      
-      setTimeout(async () => {
-        setUploadProgress(null);
-        setImportStatus('review');
-        
-        let parsed = [
-          { id: 'yangon-shops', name: 'Yangon Retail Shops', type: 'segment' },
-          { id: 'mandalay-distrib', name: 'Mandalay Wholesalers', type: 'segment' },
-          { id: 'competitor-a', name: 'Competitor Platform A', type: 'company' }
-        ];
+  // 10 steps total (0 to 9)
+  const maxSteps = 10;
 
-        setDetectedEntities(parsed);
-        setApprovedEntities(new Set(parsed.map(e => e.id)));
-      }, 1200);
-    }, 1200);
-  };
+  const handleNext = () => {
+    if (!validateStep()) return;
 
-  const handleMergeApproved = () => {
-    const list = detectedEntities.filter(e => approvedEntities.has(e.id));
-    onImportComplete(list.map(e => e.id));
-  };
-
-  const toggleApprovedEntity = (id) => {
-    setApprovedEntities(prev => {
-      const copy = new Set(prev);
-      if (copy.has(id)) copy.delete(id);
-      else copy.add(id);
-      return copy;
-    });
-  };
-
-  // --- Mock Setup Flow ---
-  const handleGuidedAnswer = (answerText) => {
-    setGuidedInputText('');
-    if (guidedStep < questions.length - 1) {
-      setGuidedStep(prev => prev + 1);
+    if (step === 9) {
+      finishOnboarding();
     } else {
-      startMockSetupLoading();
+      setStep(step + 1);
     }
   };
 
-  const handleManualOnboardingSubmit = () => {
-    startMockSetupLoading();
+  const handleSkip = () => {
+    setErrors({});
+    if (step === 9) finishOnboarding();
+    else setStep(step + 1);
   };
 
-  const startMockSetupLoading = () => {
-    setSetupStatus('loading');
-    setTimeout(() => {
-      onSkipToSandbox();
-    }, 1500);
+  const finishOnboarding = () => {
+    const profile = {
+      product,
+      hasPOS,
+      sales: {},
+      expenses: parseFloat(expenses) || 0,
+      rivals: rivals,
+      targetScenario: 'Competitor Price Cut',
+      expectedResult: 'Less Profit',
+      customers,
+      products: productsList,
+      suppliers,
+      salesHistory,
+      thresholds: { inventoryLow: 10 }
+    };
+    selectedPeriods.forEach(p => {
+      profile.sales[p.toLowerCase()] = parseFloat(salesData[p.toLowerCase()]) || 0;
+    });
+
+    onImportComplete(profile);
   };
 
-  if (setupStatus === 'loading') {
-    return (
-      <div className="animate-fade-in light-mesh-bg" style={{
-        width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        <div className="breathing-logo" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '64px', height: '64px', borderRadius: '16px', background: 'var(--text-primary)'
-        }}>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: '24px' }}>L</span>
-        </div>
-      </div>
-    );
-  }
+  const handleBack = () => {
+    setStep(step - 1);
+  };
 
   return (
-    <div className="animate-fade-in light-mesh-bg" style={{
+    <div className="animate-fade-in" style={{
       width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 10,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px'
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px',
+      background: 'var(--bg-base)'
     }}>
-      <div className="glass-card flex" style={{
-        width: '100%', maxWidth: '1200px', flex: 1, maxHeight: '720px',
-        overflow: 'hidden'
+      <div style={{
+        width: '100%', maxWidth: '720px', display: 'flex', flexDirection: 'column', maxHeight: '850px',
+        overflow: 'hidden', borderRadius: '24px', boxShadow: '0 12px 48px rgba(0,0,0,0.06)',
+        background: 'var(--bg-surface)', border: '1px solid var(--border-default)'
       }}>
-        {/* LEFT PANEL */}
-        <div className="flex-1 flex flex-col" style={{
-          padding: '64px', borderRight: '1px solid rgba(0,0,0,0.06)',
-          overflowY: 'auto'
-        }}>
-          <div style={{ maxWidth: '440px', margin: 'auto', width: '100%' }}>
-            <div className="mono" style={{ fontSize: '11px', color: 'var(--text-tertiary)', letterSpacing: '0.15em', marginBottom: '16px' }}>
-              LATTICE SETUP · INVOICES / REPORTS
+        
+          <div className="flex flex-col h-full overflow-hidden">
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', background: 'transparent' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    STEP {step + 1} OF {maxSteps}
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                  {Math.round(((step + 1) / maxSteps) * 100)}%
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '4px', background: 'var(--bg-track)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${((step + 1) / maxSteps) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s ease-out' }} />
+              </div>
             </div>
-            <h1 style={{ fontSize: '32px', letterSpacing: '-0.04em', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Import SME Data
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '14px', lineHeight: 1.6 }}>
-              Drop local B2B order spreadsheets or supplier invoices. Lattice extracts wholesale accounts and constructs your strategic graph.
-            </p>
-
-            {importStatus === null && (
-              <>
-                <div className="flex flex-col gap-5">
-                  <div
-                    className={`drop-zone ${isDragging ? 'active' : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    style={{
-                      height: '180px', display: 'flex', flexDirection: 'column', 
-                      alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                    }}
-                  >
-                    <FileUp size={36} color={isDragging ? 'var(--accent)' : 'var(--text-tertiary)'} style={{ marginBottom: '12px' }} />
-                    <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>
-                      Drag & drop invoice PDF or supplier CSV
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                      Restocking lists, catalogs, ledgers
-                    </span>
-                  </div>
-
-                  <form onSubmit={handleUrlSubmit} className="flex flex-col gap-2" style={{ marginTop: '4px' }}>
-                    <label className="mono" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                      OR ENTER COMPETITOR PRICING / CATALOG URL
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 flex items-center" style={{
-                        background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-                        borderRadius: '6px', padding: '0 12px', height: '38px'
-                      }}>
-                        <Link2 size={16} color="var(--text-tertiary)" style={{ marginRight: '8px' }} />
-                        <input
-                          type="url"
-                          placeholder="https://competitor-platform.com/merchant-deals"
-                          value={urlInput}
-                          onChange={(e) => setUrlInput(e.target.value)}
+            
+            <div className="flex-1 p-8 overflow-y-auto flex flex-col justify-start items-center">
+              <div style={{ maxWidth: '480px', width: '100%' }}>
+                
+                {step === 0 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "သင့်အရောင်းထုတ်ကုန်အမည်က ဘာလဲ?" : "What product do you sell?"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {language === 'mm' ? "အဓိကရောင်းချသော ထုတ်ကုန်အမျိုးအစားကို ဖော်ပြပေးပါ။" : "Select or type your primary selling category."}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['Clothing Apparel', 'Grocery Staples', 'Electronics', 'Coffee & Foods'].map(item => (
+                        <button key={item} onClick={() => { setProduct(item); setErrors({}); }}
+                          className="p-3.5 rounded-xl border text-center cursor-pointer transition-all"
                           style={{
-                            border: 'none', outline: 'none', background: 'transparent',
-                            fontSize: '13px', width: '100%', color: 'var(--text-primary)'
+                            background: product === item ? 'var(--accent-soft)' : 'transparent',
+                            border: product === item ? '2px solid var(--accent)' : '1.5px solid var(--border-default)',
+                            color: product === item ? 'var(--accent)' : 'var(--text-primary)',
+                            fontWeight: product === item ? 600 : 500,
+                            fontSize: '14px'
                           }}
-                        />
-                      </div>
-                      <button type="submit" className="btn-primary" style={{ padding: '0 20px', height: '38px' }}>
-                        Fetch
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {language === 'mm' ? "သို့မဟုတ် ကိုယ်တိုင်ရေးသွင်းရန်" : "Or type custom category:"}
+                      </label>
+                      <input type="text" value={product} onChange={(e) => { setProduct(e.target.value); setErrors({}); }}
+                        placeholder="e.g. Handmade Crafts"
+                        style={{ 
+                          width: '100%', 
+                          height: '44px', 
+                          padding: '0 14px', 
+                          borderRadius: '10px', 
+                          border: focusField === 'product' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          outline: 'none', 
+                          fontSize: '14px',
+                          transition: 'border-color 0.15s ease'
+                        }}
+                        onFocus={() => setFocusField('product')}
+                        onBlur={() => setFocusField(null)}
+                      />
+                      {errors.product && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors.product}</p>}
+                    </div>
+                  </div>
+                )}
+
+                {step === 1 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "POS စနစ်ကို အသုံးပြုပါသလား?" : "Do you use a Point-of-Sale system?"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {language === 'mm' ? "အရောင်းမှတ်တမ်းများအတွက် စက် သို့မဟုတ် တက်ဘလက် သုံးစွဲမှုကို ဖော်ပြပါ။" : "Choose whether you run software sales tracking."}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button onClick={() => setHasPOS(true)}
+                        className="p-6 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center gap-3"
+                        style={{ 
+                          background: hasPOS ? 'var(--accent-soft)' : 'transparent', 
+                          border: hasPOS ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          color: hasPOS ? 'var(--accent)' : 'var(--text-primary)' 
+                        }}
+                      >
+                        <Monitor size={28} />
+                        <span style={{ fontWeight: 600, fontSize: '15px' }}>{language === 'mm' ? "အသုံးပြုပါသည်" : "Yes, I use POS"}</span>
+                      </button>
+                      <button onClick={() => setHasPOS(false)}
+                        className="p-6 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center gap-3"
+                        style={{ 
+                          background: !hasPOS ? 'var(--accent-soft)' : 'transparent', 
+                          border: !hasPOS ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          color: !hasPOS ? 'var(--accent)' : 'var(--text-primary)' 
+                        }}
+                      >
+                        <Book size={28} />
+                        <span style={{ fontWeight: 600, fontSize: '15px' }}>{language === 'mm' ? "မသုံးပါ" : "No, manual ledger"}</span>
                       </button>
                     </div>
-                  </form>
-                </div>
-
-                {/* Encrypted History Section */}
-                <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                  <div className="flex items-center gap-2" style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
-                    <Clock size={16} />
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>Recent Workspaces</span>
                   </div>
-                  
-                  <div className="flex flex-col gap-3">
-                    <div
-                      onClick={onSkipToSandbox}
-                      style={{
-                        background: 'rgba(255,255,255,0.6)', border: '1px solid var(--border-light)',
-                        borderRadius: '8px', padding: '16px', cursor: 'pointer', transition: 'all 0.2s ease',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.transform = 'none'; }}
-                    >
-                       <div>
-                         <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Yangon Retail Market Analysis</div>
-                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Saved yesterday</div>
-                       </div>
-                       <ChevronRight size={18} color="var(--text-tertiary)" />
+                )}
+
+                {step === 2 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "ဘယ်အချိန်ကာလအထိ အရောင်းမှတ်တမ်းများကို သိမ်းဆည်းထားပါသလဲ?" : "Which sales periods do you record?"}
+                      </h2>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {['Daily', 'Weekly', 'Monthly', 'Yearly'].map(period => {
+                        const isSelected = selectedPeriods.includes(period);
+                        return (
+                          <button key={period} onClick={() => { 
+                            setSelectedPeriods(prev => prev.includes(period) ? prev.filter(p => p !== period) : [...prev, period]); 
+                            setErrors({}); 
+                          }}
+                            className="w-full flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all text-left"
+                            style={{ 
+                              background: isSelected ? 'var(--accent-soft)' : 'transparent', 
+                              border: isSelected ? '2px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              color: isSelected ? 'var(--accent)' : 'var(--text-primary)' 
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {isSelected ? <Check size={20} color="var(--accent)" /> : <div style={{ width: '20px', height: '20px', borderRadius: '6px', border: '2px solid var(--border-default)' }} />}
+                              <span style={{ fontWeight: 600, fontSize: '15px' }}>{period}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.periods && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors.periods}</p>}
+                  </div>
+                )}
+
+                {step === 3 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "အထက်ပါ ကာလအတွက် အ average အရောင်းပမာဏကို ထည့်ပါ (MMK)" : "Enter average sales for each selected period (MMK)"}
+                      </h2>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      {selectedPeriods.map(period => (
+                        <div key={period} className="flex flex-col gap-2">
+                          <label className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                            Average {period} Sales (MMK)
+                          </label>
+                          <input type="number" min="0" step="1" required value={salesData[period.toLowerCase()]} onChange={(e) => { setSalesData(prev => ({...prev, [period.toLowerCase()]: e.target.value})); setErrors({}); }}
+                            placeholder="e.g. 5000" className="font-number"
+                            style={{ 
+                              width: '100%', 
+                              height: '44px', 
+                              padding: '0 14px', 
+                              borderRadius: '10px', 
+                              border: focusField === `sales_${period}` ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '15px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField(`sales_${period}`)}
+                            onBlur={() => setFocusField(null)}
+                          />
+                          {errors[period] && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors[period]}</p>}
+                        </div>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  <div className="flex items-center gap-2" style={{ marginTop: '16px', fontSize: '11px', color: 'var(--entity-policy)' }}>
-                    <ShieldCheck size={14} />
-                    <span>Your imports are secured with end-to-end encryption to protect proprietary data.</span>
+                {step === 4 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "လစဉ် အသုံးစရိတ် (MMK) ကို ထည့်ပါ" : "Enter your monthly expenses (MMK)"}
+                      </h2>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="mono" style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Monthly Expenses</label>
+                      <input type="number" min="0" step="1" required value={expenses} onChange={(e) => { setExpenses(e.target.value); setErrors({}); }}
+                        placeholder="e.g. 3000" className="font-number"
+                        style={{ 
+                          width: '100%', 
+                          height: '44px', 
+                          padding: '0 14px', 
+                          borderRadius: '10px', 
+                          border: focusField === 'expenses' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          outline: 'none', 
+                          fontSize: '15px',
+                          transition: 'border-color 0.15s ease'
+                        }}
+                        onFocus={() => setFocusField('expenses')}
+                        onBlur={() => setFocusField(null)}
+                      />
+                      {errors.expenses && <p style={{ color: 'var(--critical)', fontSize: '12px' }}>{errors.expenses}</p>}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                )}
 
-            {/* Parsing and Review states ... */}
-            {importStatus === 'parsing' && (
-              <div style={{
-                background: 'rgba(255,255,255,0.5)', borderRadius: '6px', border: '1px solid var(--border-default)',
-                padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center'
-              }}>
-                <div className="flex items-center gap-2" style={{ marginBottom: '16px' }}>
-                  <span className="dot"></span>
-                  <span className="dot" style={{ animationDelay: '0.2s' }}></span>
-                  <span className="dot" style={{ animationDelay: '0.4s' }}></span>
-                </div>
-                <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '12px' }}>
-                  {uploadProgress?.step}
-                </div>
-                <div style={{
-                  width: '100%', height: '4px', background: 'var(--border-light)',
-                  borderRadius: '2px', overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${uploadProgress?.value}%`, height: '100%',
-                    background: 'var(--accent)', transition: 'width 0.2s ease-out'
-                  }} />
-                </div>
-              </div>
-            )}
+                {step === 5 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "ပြိုင်ဘက်များကို ထည့်သွင်းရန်" : "Add Competitors"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        {language === 'mm' ? "ပြိုင်ဘက်ဆိုင်များ၏ အမည်နှင့် စျေးနှုန်းမဟာဗျူဟာကို ထည့်ပါ (စိတ်ကြိုက်အချက်အလက်)" : "Enter competitor names and pricing strategies. Optional."}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddCompetitor(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            {language === 'mm' ? "ပြိုင်ဘက်ဆိုင် အမည်" : "Competitor Name"}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Shop B"
+                            value={newRivalName}
+                            onChange={e => setNewRivalName(e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'rivalName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField('rivalName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                            {language === 'mm' ? "စျေးနှုန်းမဟာဗျူဟာ" : "Pricing Strategy"}
+                          </label>
+                          <select
+                            value={newRivalPricing}
+                            onChange={e => setNewRivalPricing(e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 10px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'rivalPricing' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent', 
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '13px',
+                              transition: 'border-color 0.15s ease'
+                            }}
+                            onFocus={() => setFocusField('rivalPricing')}
+                            onBlur={() => setFocusField(null)}
+                          >
+                            <option value="Same price as our product">{language === 'mm' ? 'ကျွန်ုပ်တို့နှင့် စျေးနှုန်းတူ' : 'Same price as our product'}</option>
+                            <option value="Lower price than our product">{language === 'mm' ? 'ကျွန်ုပ်တို့ထက် စျေးသက်သာ' : 'Lower price than our product'}</option>
+                            <option value="Higher price than our product">{language === 'mm' ? 'ကျွန်ုပ်တို့ထက် စျေးပိုကြီး' : 'Higher price than our product'}</option>
+                          </select>
+                        </div>
+                        <button
+                          type="submit"
+                          style={{ 
+                            width: '100%',
+                            height: '42px',
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px',
+                            transition: 'opacity 0.15s ease'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>{language === 'mm' ? "ပြိုင်ဘက်ဆိုင် ထည့်မည်" : "Add Competitor"}</span>
+                        </button>
+                      </form>
 
-            {importStatus === 'review' && (
-              <div style={{
-                background: 'rgba(255,255,255,0.5)', border: '1px solid var(--border-default)',
-                borderRadius: '8px', padding: '24px'
-              }}>
-                <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                  Extracted B2B Accounts
-                </div>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>
-                  Select the accounts or market parameters you want to add to your workspace graph.
-                </p>
+                      {rivals.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {rivals.map(r => (
+                            <div key={r.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{r.name}</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  {language === 'mm' ? (
+                                    r.pricing.includes('Lower') ? 'ကျွန်ုပ်တို့ထက် စျေးသက်သာ' : r.pricing.includes('Higher') ? 'ကျွန်ုပ်တို့ထက် စျေးပိုကြီး' : 'စျေးတူ'
+                                  ) : r.pricing}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => setRivals(rivals.filter(x => x.id !== r.id))}
+                                style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                <div className="flex flex-col gap-3" style={{ marginBottom: '24px' }}>
-                  {detectedEntities.map(entity => (
-                    <div
-                      key={entity.id}
-                      onClick={() => toggleApprovedEntity(entity.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '12px 14px', borderRadius: '6px', background: 'var(--surface-card)',
-                        border: '1px solid var(--border-light)', cursor: 'pointer'
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        {approvedEntities.has(entity.id) ? (
-                          <CheckSquare size={18} color="var(--accent)" />
-                        ) : (
-                          <Square size={18} color="var(--text-tertiary)" />
-                        )}
-                        <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '14px' }}>{entity.name}</span>
+                {step === 6 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "သင့်ဖောက်သည်အမည်များကို ထည့်ပါ (10-30)" : "Enter your customers (10-30)"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Optional. Used for AI churn detection.</p>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddCustomer(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Name</label>
+                          <input 
+                            type="text" 
+                            required
+                            placeholder="e.g. Mg Mg" 
+                            value={newCustomerName} 
+                            onChange={e=>setNewCustomerName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'customerName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('customerName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. 09-xxxxxxxxx" 
+                            value={newCustomerContact} 
+                            onChange={e=>setNewCustomerContact(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'customerContact' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('customerContact')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          type="submit" 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Customer</span>
+                        </button>
+                      </form>
+                      
+                      {customers.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {customers.map(c => (
+                            <div key={c.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</span>
+                                {c.contact && <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.contact}</span>}
+                              </div>
+                              <button onClick={()=>setCustomers(customers.filter(x=>x.id!==c.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {step === 7 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "ထုတ်ကုန်/မီနူးစာရင်း (5-10) ကို ထည့်ပါ" : "Enter your product/menu items (5-10)"}
+                      </h2>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddProductList(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Product Name</label>
+                          <input 
+                            type="text" 
+                            required
+                            placeholder="e.g. Coffee Latte" 
+                            value={newProductName} 
+                            onChange={e=>setNewProductName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'prodName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('prodName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Price (MMK)</label>
+                          <input 
+                            type="number" 
+                            min="0"
+                            step="1"
+                            required
+                            placeholder="e.g. 3500" 
+                            value={newProductPrice} 
+                            onChange={e=>setNewProductPrice(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'prodPrice' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('prodPrice')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          type="submit" 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Product</span>
+                        </button>
+                      </form>
+                      
+                      {productsList.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {productsList.map(p => (
+                            <div key={p.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</span>
+                              <span className="font-number text-xs" style={{ color: 'var(--text-secondary)' }}>{p.price} MMK</span>
+                              <button onClick={()=>setProductsList(productsList.filter(x=>x.id!==p.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {step === 8 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "ကုန်ပစ္စည်းသွင်းသူများ (3-8) ထည့်ပါ" : "Enter your suppliers (3-8)"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Contact details will be securely masked.</p>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <form onSubmit={(e) => { e.preventDefault(); handleAddSupplier(); }} className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'transparent', border: '1.5px solid var(--border-default)' }}>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Supplier Name</label>
+                          <input 
+                            type="text" 
+                            required
+                            placeholder="e.g. ABC Wholesale" 
+                            value={newSupplierName} 
+                            onChange={e=>setNewSupplierName(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppName' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppName')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Products Supplied (comma separated)</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Coffee Beans, Cups" 
+                            value={newSupplierProducts} 
+                            onChange={e=>setNewSupplierProducts(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppProds' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppProds')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Email/Phone</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. contact@abc.com" 
+                            value={newSupplierContact} 
+                            onChange={e=>setNewSupplierContact(e.target.value)} 
+                            style={{ 
+                              width: '100%', 
+                              height: '42px', 
+                              padding: '0 12px', 
+                              borderRadius: '8px', 
+                              border: focusField === 'suppCont' ? '1.5px solid var(--accent)' : '1.5px solid var(--border-default)', 
+                              background: 'transparent',
+                              color: 'var(--text-primary)',
+                              outline: 'none', 
+                              fontSize: '14px',
+                              transition: 'border-color 0.15s ease'
+                            }} 
+                            onFocus={() => setFocusField('suppCont')}
+                            onBlur={() => setFocusField(null)}
+                          />
+                        </div>
+                        <button 
+                          type="submit" 
+                          style={{ 
+                            width: '100%', 
+                            height: '42px', 
+                            background: 'var(--accent)', 
+                            color: '#fff', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            marginTop: '4px'
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Add Supplier</span>
+                        </button>
+                      </form>
+                      
+                      {suppliers.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2 max-h-40 overflow-y-auto">
+                          {suppliers.map(s => (
+                            <div key={s.id} className="flex justify-between items-center p-3 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</div>
+                                {s.products && s.products.length > 0 && (
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Supplies: {s.products.join(', ')}</div>
+                                )}
+                                <div className="mono" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{s.contactMasked}</div>
+                              </div>
+                              <button onClick={()=>setSuppliers(suppliers.filter(x=>x.id!==s.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', padding: '4px' }}><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {step === 9 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div>
+                      <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {language === 'mm' ? "အရောင်းမှတ်တမ်းဖိုင် အပ်လုဒ်လုပ်ပါ" : "Bulk Sales History Import"}
+                      </h2>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Upload an Excel or CSV file (up to 30 days) to power AI forecasting.</p>
+                    </div>
+                    
+                    <div style={{ padding: '32px 20px', border: '2px dashed var(--border-default)', borderRadius: '16px', textAlign: 'center', background: 'transparent' }}>
+                      <FileUp size={28} style={{ color: 'var(--text-tertiary)', margin: '0 auto 12px' }} />
+                      <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleBulkUpload} style={{ display: 'none' }} id="file-upload" />
+                      <label htmlFor="file-upload" style={{ background: 'var(--accent)', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'inline-block' }}>
+                        {language === 'mm' ? "ဖိုင်ရွေးချယ်ရန်" : "Select File"}
+                      </label>
+                    </div>
+                    
+                    {filePreview && (
+                      <div className="mt-4 p-4 rounded-xl" style={{ background: 'transparent', border: '1px solid var(--border-default)' }}>
+                        <h4 style={{fontSize:'12px', fontWeight:600, marginBottom:'8px'}}>Preview (first 5 rows)</h4>
+                        <div className="flex flex-col gap-1">
+                          {filePreview.map((row, i) => (
+                            <div key={i} className="flex justify-between text-xs mono text-txt-secondary">
+                              <span>{row.date}</span>
+                              <span>Sales: {row.sales}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <span className="mono" style={{
-                        fontSize: '9px', padding: '4px 8px', borderRadius: '4px',
-                        background: 'var(--surface-active)', color: 'var(--text-secondary)'
-                      }}>
-                        {entity.type.toUpperCase()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                )}
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setImportStatus(null)}
-                    style={{
-                      flex: 1, background: 'transparent', border: '1px solid var(--border-default)',
-                      borderRadius: '6px', padding: '10px 0', fontSize: '14px', cursor: 'pointer'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleMergeApproved}
-                    className="btn-primary"
-                    style={{ flex: 2, height: '42px', fontSize: '14px' }}
-                  >
-                    Confirm and Merge
-                  </button>
-                </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="flex-1 flex flex-col" style={{
-          padding: '64px', overflowY: 'auto', background: 'rgba(0,0,0,0.015)'
-        }}>
-          <div style={{ maxWidth: '540px', margin: 'auto', width: '100%' }}>
-            <div className="mono" style={{ fontSize: '11px', color: 'var(--text-tertiary)', letterSpacing: '0.15em', marginBottom: '16px' }}>
-              LATTICE SETUP · INTERACTIVE PROFILE
-            </div>
-            <h1 style={{ fontSize: '32px', letterSpacing: '-0.04em', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Define B2B Context Manually
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px', lineHeight: 1.6 }}>
-              No spreadsheets? Summarize your selling market. Type details regarding your retailers, wholesale supplier partners, and competitor apps.
-            </p>
-
-            {/* Toggle Switch */}
-            <div className="flex gap-2" style={{ marginBottom: '32px', background: 'rgba(255,255,255,0.4)', padding: '6px', borderRadius: '10px', display: 'inline-flex', border: '1px solid var(--border-light)' }}>
-              <button
-                onClick={() => setRightMode('prompt')}
-                style={{
-                  background: rightMode === 'prompt' ? '#fff' : 'transparent',
-                  color: rightMode === 'prompt' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: rightMode === 'prompt' ? '1px solid var(--border-light)' : '1px solid transparent',
-                  boxShadow: rightMode === 'prompt' ? '0 2px 6px rgba(0,0,0,0.04)' : 'none',
-                  padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                }}
-              >
-                 Write Description
-              </button>
-              <button
-                onClick={() => setRightMode('guided')}
-                style={{
-                  background: rightMode === 'guided' ? '#fff' : 'transparent',
-                  color: rightMode === 'guided' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  border: rightMode === 'guided' ? '1px solid var(--border-light)' : '1px solid transparent',
-                  boxShadow: rightMode === 'guided' ? '0 2px 6px rgba(0,0,0,0.04)' : 'none',
-                  padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                }}
-              >
-                 Guided Setup (Lazy Mode)
-              </button>
             </div>
 
-            {rightMode === 'prompt' && (
-              <div className="animate-fade-in flex flex-col gap-3">
-                <textarea
-                  placeholder="Type your retail segment profile... (e.g., We are a B2B ordering platform for grocers. We compete with a competitor app. Retailers pay wholesale cash but need supplier credit terms.)"
-                  value={manualText}
-                  onChange={(e) => setManualText(e.target.value)}
-                  style={{
-                    width: '100%', height: '200px', border: '1px solid var(--border-default)',
-                    borderRadius: '8px', padding: '16px', resize: 'none', outline: 'none',
-                    fontSize: '14px', background: 'rgba(255,255,255,0.8)', lineHeight: '1.6',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)'
-                  }}
-                />
-                <button
-                  disabled={!manualText.trim()}
-                  onClick={handleManualOnboardingSubmit}
-                  className="btn-primary"
-                  style={{ height: '46px', marginTop: '8px', fontSize: '14px' }}
+            <div style={{ padding: '24px 32px', borderTop: '1px solid var(--border-default)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={handleBack} disabled={step === 0}
+                className="flex items-center gap-1 bg-transparent hover:bg-surface-hover/80 text-txt-secondary disabled:opacity-30 disabled:cursor-not-allowed border-none font-semibold text-sm py-2 px-3 rounded-lg cursor-pointer"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <ChevronLeft size={16} /> {t.back}
+              </button>
+              
+              <div className="flex gap-3">
+                {[5, 6, 7, 8, 9].includes(step) && (
+                  <button onClick={handleSkip}
+                    style={{ background: 'transparent', border: '1px solid var(--border-default)', padding: '0 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: 'var(--text-secondary)' }}
+                  >
+                    {language === 'mm' ? "ကျော်သွားမည်" : "Skip"}
+                  </button>
+                )}
+                
+                <button onClick={handleNext}
+                  className="flex items-center gap-1 bg-transparent hover:bg-surface-hover/80 text-txt-secondary border-none font-semibold text-sm py-2 px-3 rounded-lg cursor-pointer"
+                  style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  Assemble Graph View <ChevronRight size={16} />
+                  {step === maxSteps - 1 ? (language === 'mm' ? "လုပ်ငန်းစခရင်သို့ သွားမည်" : "Build Workspace") : t.next}
+                  {step !== maxSteps - 1 && <ChevronRight size={16} />}
                 </button>
               </div>
-            )}
-
-            {rightMode === 'guided' && (
-              <div className="animate-fade-in" style={{
-                background: 'rgba(255,255,255,0.6)', border: '1px solid var(--border-light)',
-                borderRadius: '12px', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
-              }}>
-                <div className="mono" style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600, marginBottom: '16px' }}>
-                  QUESTION {guidedStep + 1} OF {questions.length}
-                </div>
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '24px', lineHeight: 1.4 }}>
-                  {questions[guidedStep].text}
-                </h2>
-                
-                <div className="flex flex-col gap-3">
-                  {questions[guidedStep].options.map((opt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleGuidedAnswer(opt)}
-                      style={{
-                        background: '#fff', border: '1px solid var(--border-light)', borderRadius: '8px',
-                        padding: '16px', fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)',
-                        textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.transform = 'none'; }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-light)' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Or type your own answer:
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={guidedInputText}
-                      onChange={e => setGuidedInputText(e.target.value)}
-                      placeholder="Type custom answer..."
-                      style={{
-                        flex: 1, height: '42px', border: '1px solid var(--border-default)',
-                        borderRadius: '6px', padding: '0 12px', fontSize: '13px',
-                        background: '#fff', outline: 'none'
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && guidedInputText.trim()) handleGuidedAnswer(guidedInputText);
-                      }}
-                    />
-                    <button
-                      disabled={!guidedInputText.trim()}
-                      onClick={() => handleGuidedAnswer(guidedInputText)}
-                      className="btn-primary"
-                      style={{ height: '42px', padding: '0 20px' }}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
+            
           </div>
-        </div>
       </div>
     </div>
   );
