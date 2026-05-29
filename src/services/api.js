@@ -146,7 +146,7 @@ class LatticeApiService {
     
     // Inject a default projections array to prevent crashes on fallback
     const monthlySales = cleanProfile?.sales?.monthly || 12000;
-    const monthlyExpenses = cleanProfile?.expenses || 8000;
+    const monthlyExpenses = cleanProfile?.expenses ?? 8000;
     const initialCustomers = cleanProfile?.customers?.length * 12 || 180;
     
     rawResult.projections = [];

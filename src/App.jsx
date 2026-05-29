@@ -121,6 +121,7 @@ export default function App() {
             <ReportsView 
               workspace={workspace} 
               businessProfile={businessProfile} 
+              dashboardData={dashboardData}
               language={language}
             />
           } />

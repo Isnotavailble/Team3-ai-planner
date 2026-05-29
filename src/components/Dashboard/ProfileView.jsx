@@ -90,7 +90,12 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
             fontSize: '9px', background: 'rgba(0,0,0,0.05)', padding: '2px 8px',
             borderRadius: '10px', textTransform: 'uppercase', display: 'inline-block', marginTop: '6px'
           }}>
-            {t.posStatus}: {businessProfile?.hasPOS ? (language === 'mm' ? "အသုံးပြုပါသည်" : "WITH POS") : (language === 'mm' ? "လက်စွဲ စာရင်းသွင်းသည်" : "WITHOUT POS")}
+            {t.posStatus}:{' '}
+            {businessProfile?.hasPOS === true
+              ? (language === 'mm' ? "အသုံးပြုပါသည်" : "WITH POS")
+              : businessProfile?.hasPOS === false
+                ? (language === 'mm' ? "လက်စွဲ စာရင်းသွင်းသည်" : "WITHOUT POS")
+                : (language === 'mm' ? "မသတ်မှတ်ရသေး" : "NOT SET")}
           </span>
         </div>
       </header>

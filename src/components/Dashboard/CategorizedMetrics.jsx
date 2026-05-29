@@ -31,7 +31,7 @@ export default function CategorizedMetrics({ profile }) {
                        (profile?.sales?.yearly ? profile.sales.yearly / 365 : 0) || 
                        400;
 
-  const budget = profile?.expenses || 8000;
+  const budget = profile?.expenses ?? 8000;
 
   // 1: Financial Health (Bar Chart)
   const financialData = useMemo(() => {
