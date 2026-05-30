@@ -185,14 +185,6 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
             {language === 'mm' ? "လုပ်ငန်း၏ ဘဏ္ဍာရေး အခြေအနေ နှိုင်းယှဉ်ချက်" : "Performance insights & metric statements"}
           </p>
         </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-          padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-          fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)'
-        }}>
-          <Download size={14} /> {language === 'mm' ? "ထုတ်ယူမည်" : "Export PDF"}
-        </button>
       </header>
 
       {/* DYNAMIC CSV FINANCIAL BREAKDOWN & AI AUDITOR */}
