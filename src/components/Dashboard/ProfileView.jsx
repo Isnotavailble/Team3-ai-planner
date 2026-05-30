@@ -160,38 +160,58 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
     }
   };
 
+  const [isSavingOps, setIsSavingOps] = useState(false);
+  const [opsSaveMsg, setOpsSaveMsg] = useState('');
+  const [isSavingFin, setIsSavingFin] = useState(false);
+  const [finSaveMsg, setFinSaveMsg] = useState('');
+  const [isSavingNet, setIsSavingNet] = useState(false);
+  const [netSaveMsg, setNetSaveMsg] = useState('');
+
   const handleSaveOperations = async () => {
+    setIsSavingOps(true);
+    setOpsSaveMsg('');
     try {
       await setBusinessProfile(prev => ({
         ...prev,
         product: product.trim() || null,
         hasPOS: hasPOS
       }));
-      alert(language === 'mm' ? "လုပ်ငန်းအချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ" : "Operations settings saved successfully!");
+      setOpsSaveMsg(language === 'mm' ? "လုပ်ငန်းအချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ" : "Operations settings saved successfully!");
+      setTimeout(() => setOpsSaveMsg(''), 3000);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSavingOps(false);
     }
   };
 
   const handleSaveFinancials = async () => {
+    setIsSavingFin(true);
+    setFinSaveMsg('');
     try {
       await setBusinessProfile(prev => ({
         ...prev,
         expenses: parseFloat(expenses) || 0,
         sales: {
+          ...(prev.sales || {}),
           daily: salesData.daily !== '' ? parseFloat(salesData.daily) : null,
           weekly: salesData.weekly !== '' ? parseFloat(salesData.weekly) : null,
           monthly: salesData.monthly !== '' ? parseFloat(salesData.monthly) : null,
           yearly: salesData.yearly !== '' ? parseFloat(salesData.yearly) : null
         }
       }));
-      alert(language === 'mm' ? "ငွေကြေးခန့်မှန်းချက်များ သိမ်းဆည်းပြီးပါပြီ" : "Financial estimates saved successfully!");
+      setFinSaveMsg(language === 'mm' ? "ငွေကြေးခန့်မှန်းချက်များ သိမ်းဆည်းပြီးပါပြီ" : "Financial estimates saved successfully!");
+      setTimeout(() => setFinSaveMsg(''), 3000);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSavingFin(false);
     }
   };
 
   const handleSaveNetwork = async () => {
+    setIsSavingNet(true);
+    setNetSaveMsg('');
     try {
       await setBusinessProfile(prev => ({
         ...prev,
@@ -200,9 +220,12 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
         customers: customers,
         suppliers: suppliers
       }));
-      alert(language === 'mm' ? "လုပ်ငန်းကွန်ရက် အချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ" : "Network configuration saved successfully!");
+      setNetSaveMsg(language === 'mm' ? "လုပ်ငန်းကွန်ရက် အချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ" : "Network configuration saved successfully!");
+      setTimeout(() => setNetSaveMsg(''), 3000);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSavingNet(false);
     }
   };
   
@@ -550,13 +573,14 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
             <div style={{ minHeight: '260px' }}>
               {/* OPERATIONS PANEL */}
               {activeTab === 'operations' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveOperations(); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       {language === 'mm' ? "ထုတ်ကုန်/လုပ်ငန်း အမျိုးအစား" : "Business Category / Product"}
                     </label>
                     <input
                       type="text"
+                      required
                       value={product}
                       onChange={(e) => setProduct(e.target.value)}
                       placeholder={language === 'mm' ? "ဥပမာ - လက်ဖက်ရည်ဆိုင်၊ ကုန်စုံဆိုင်" : "e.g. Tea Shop, Grocery"}
@@ -585,24 +609,37 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                     />
                   </div>
 
-                  <button onClick={handleSaveOperations} style={{
-                    background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
-                    padding: '10px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start'
-                  }}>
-                    {language === 'mm' ? "အချက်အလက် သိမ်းဆည်းမည်" : "Save Operations"}
-                  </button>
-                </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button type="submit" disabled={isSavingOps} style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
+                      padding: '10px 16px', fontSize: '13px', fontWeight: 600, 
+                      cursor: isSavingOps ? 'not-allowed' : 'pointer', 
+                      opacity: isSavingOps ? 0.6 : 1,
+                      alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}>
+                      {isSavingOps ? (language === 'mm' ? "သိမ်းနေသည်..." : "Saving...") : (language === 'mm' ? "အချက်အလက် သိမ်းဆည်းမည်" : "Save Operations")}
+                    </button>
+                    {opsSaveMsg && (
+                      <div className="animate-fade-in" style={{ color: 'var(--positive)', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} /> {opsSaveMsg}
+                      </div>
+                    )}
+                  </div>
+                </form>
               )}
 
               {/* FINANCIALS PANEL */}
               {activeTab === 'financials' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveFinancials(); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       {language === 'mm' ? "လစဉ် အသုံးစရိတ် (MMK)" : "Monthly Expenses (MMK)"}
                     </label>
                     <input
                       type="number"
+                      required
+                      min="0"
+                      step="1"
                       value={expenses}
                       onChange={(e) => setExpenses(e.target.value)}
                       placeholder="e.g. 8000"
@@ -624,6 +661,8 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{language === 'mm' ? "နေ့စဉ်" : "Daily"}</span>
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           value={salesData.daily}
                           onChange={(e) => setSalesData({ ...salesData, daily: e.target.value })}
                           style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', fontSize: '13px', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
@@ -633,6 +672,8 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{language === 'mm' ? "အပတ်စဉ်" : "Weekly"}</span>
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           value={salesData.weekly}
                           onChange={(e) => setSalesData({ ...salesData, weekly: e.target.value })}
                           style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', fontSize: '13px', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
@@ -642,6 +683,8 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{language === 'mm' ? "လစဉ်" : "Monthly"}</span>
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           value={salesData.monthly}
                           onChange={(e) => setSalesData({ ...salesData, monthly: e.target.value })}
                           style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', fontSize: '13px', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
@@ -651,6 +694,8 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{language === 'mm' ? "နှစ်စဉ်" : "Yearly"}</span>
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           value={salesData.yearly}
                           onChange={(e) => setSalesData({ ...salesData, yearly: e.target.value })}
                           style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', fontSize: '13px', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
@@ -659,13 +704,23 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                     </div>
                   </div>
 
-                  <button onClick={handleSaveFinancials} style={{
-                    background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
-                    padding: '10px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start', marginTop: '6px'
-                  }}>
-                    {language === 'mm' ? "ဘဏ္ဍာရေး သိမ်းဆည်းမည်" : "Save Financials"}
-                  </button>
-                </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                    <button type="submit" disabled={isSavingFin} style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
+                      padding: '10px 16px', fontSize: '13px', fontWeight: 600, 
+                      cursor: isSavingFin ? 'not-allowed' : 'pointer', 
+                      opacity: isSavingFin ? 0.6 : 1,
+                      alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}>
+                      {isSavingFin ? (language === 'mm' ? "သိမ်းနေသည်..." : "Saving...") : (language === 'mm' ? "ဘဏ္ဍာရေး သိမ်းဆည်းမည်" : "Save Financials")}
+                    </button>
+                    {finSaveMsg && (
+                      <div className="animate-fade-in" style={{ color: 'var(--positive)', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} /> {finSaveMsg}
+                      </div>
+                    )}
+                  </div>
+                </form>
               )}
 
               {/* NETWORK PANEL */}
@@ -697,10 +752,11 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
 
                   {/* PRODUCTS BUILDER PANEL */}
                   {activeNetworkSubTab === 'products' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleAddProductList(); }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <input
                           type="text"
+                          required
                           placeholder={language === 'mm' ? "ကုန်ပစ္စည်းအမည် (ဥပမာ - မုန့်ဟင်းခါး)" : "Product name (e.g. Mohinga)"}
                           value={newProductName}
                           onChange={e => setNewProductName(e.target.value)}
@@ -708,12 +764,15 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                         />
                         <input
                           type="number"
+                          required
+                          min="0"
+                          step="1"
                           placeholder={language === 'mm' ? "စျေးနှုန်း (MMK)" : "Price (MMK)"}
                           value={newProductPrice}
                           onChange={e => setNewProductPrice(e.target.value)}
                           style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', fontSize: '13px', background: 'var(--bg-base)', color: 'var(--text-primary)' }}
                         />
-                        <button onClick={handleAddProductList} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '6px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <button type="submit" style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '6px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <Plus size={16} />
                         </button>
                       </div>
@@ -724,14 +783,14 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>{item.name}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span className="font-number" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.price.toLocaleString()} MMK</span>
-                              <button onClick={() => setProductsList(productsList.filter(x => x.id !== item.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                              <button type="button" onClick={() => setProductsList(productsList.filter(x => x.id !== item.id))} style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}>
                                 <Trash2 size={13} />
                               </button>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </form>
                   )}
 
                   {/* RIVALS BUILDER PANEL */}
@@ -865,12 +924,22 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                     </div>
                   )}
 
-                  <button onClick={handleSaveNetwork} style={{
-                    background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
-                    padding: '10px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start', marginTop: '4px'
-                  }}>
-                    {language === 'mm' ? "လုပ်ငန်းကွန်ရက် သိမ်းဆည်းမည်" : "Save Network Map"}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <button onClick={handleSaveNetwork} disabled={isSavingNet || (!productsList.length && !rivals.length && !customers.length && !suppliers.length)} style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '8px',
+                      padding: '10px 16px', fontSize: '13px', fontWeight: 600, 
+                      cursor: (isSavingNet || (!productsList.length && !rivals.length && !customers.length && !suppliers.length)) ? 'not-allowed' : 'pointer', 
+                      opacity: (isSavingNet || (!productsList.length && !rivals.length && !customers.length && !suppliers.length)) ? 0.6 : 1,
+                      alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}>
+                      {isSavingNet ? (language === 'mm' ? "သိမ်းနေသည်..." : "Saving...") : (language === 'mm' ? "လုပ်ငန်းကွန်ရက် သိမ်းဆည်းမည်" : "Save Network Map")}
+                    </button>
+                    {netSaveMsg && (
+                      <div className="animate-fade-in" style={{ color: 'var(--positive)', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} /> {netSaveMsg}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -891,7 +960,11 @@ export default function ProfileView({ businessProfile = {}, setBusinessProfile, 
                       </div>
                     </div>
                   ) : (
-                    <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                    <div 
+                      onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragOver={handleDragOver} 
+                      onDragLeave={handleDragLeave} 
+                      onDrop={handleDrop}
                       style={{
                         padding: '32px 24px', border: '2px dashed var(--border-default)', borderRadius: '12px',
                         textAlign: 'center', background: isDragging ? 'var(--accent-soft)' : 'var(--bg-surface)',
