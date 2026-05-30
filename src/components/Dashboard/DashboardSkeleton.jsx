@@ -1,62 +1,123 @@
 
-
 export default function DashboardSkeleton() {
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-fade-in">
-      {/* Page Title & Button Skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="h-6 w-48 bg-surface-panel shimmer rounded-md" />
-          <div className="h-3.5 w-64 bg-surface-panel shimmer rounded-sm" />
+    <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}
+      className="animate-fade-in">
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className="shimmer" style={{ width: '180px', height: '22px', borderRadius: '6px' }} />
+          <div className="shimmer" style={{ width: '260px', height: '12px', borderRadius: '4px' }} />
         </div>
-        <div className="h-9 w-32 bg-surface-panel shimmer rounded-lg" />
+        <div className="shimmer" style={{ width: '100px', height: '32px', borderRadius: '8px' }} />
       </div>
 
-      {/* KPI Cards Row (4 cards) */}
-      <div className="grid grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-surface-card border border-border-light rounded-2xl p-6 h-[140px] flex flex-col justify-center shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-surface-panel shimmer" />
-              <div className="h-3 w-24 bg-surface-panel shimmer rounded-sm" />
+      {/* Financial Breakdown Card */}
+      <div style={{
+        background: 'var(--bg-surface)', borderRadius: '24px',
+        padding: '24px', border: '1px solid var(--border-default)',
+        display: 'flex', flexDirection: 'column', gap: '20px'
+      }}>
+        {/* Card Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid var(--border-default)' }}>
+          <div className="shimmer" style={{ width: '16px', height: '16px', borderRadius: '4px' }} />
+          <div className="shimmer" style={{ width: '200px', height: '14px', borderRadius: '4px' }} />
+        </div>
+
+        {/* 3 KPI Tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="shimmer" style={{ width: '100px', height: '11px', borderRadius: '4px' }} />
+              <div className="shimmer" style={{ width: '130px', height: '26px', borderRadius: '6px' }} />
             </div>
-            <div className="h-10 w-32 bg-surface-panel shimmer rounded-md" />
+          ))}
+        </div>
+
+        {/* Health Status Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-elevated)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-default)' }}>
+          <div className="shimmer skeleton-circle" style={{ width: '40px', height: '40px' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="shimmer" style={{ width: '140px', height: '11px', borderRadius: '4px' }} />
+            <div className="shimmer" style={{ width: '80px', height: '14px', borderRadius: '4px' }} />
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* CHARTS AND TOP PRODUCTS ROW */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        
-        {/* Left Column: Sales Chart (approx 60%) */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex justify-between items-center min-h-[28px]">
-            <div className="h-3 w-32 bg-surface-panel shimmer rounded-sm" />
-            <div className="h-5 w-24 bg-surface-panel shimmer rounded-md" />
-          </div>
-          <div className="bg-surface-card border border-border-default rounded-2xl h-[280px] shadow-sm flex flex-col p-6">
-             <div className="flex-1 w-full bg-surface-panel/30 shimmer rounded-lg" />
+      {/* Two-Column Row: Pie Chart Card + Breakdown List Card */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+        {/* Left: Profit Pie Chart Card */}
+        <div style={{
+          background: 'var(--bg-surface)', borderRadius: '24px',
+          padding: '24px', border: '1px solid var(--border-default)',
+          display: 'flex', flexDirection: 'column', gap: '24px'
+        }}>
+          {/* Card label */}
+          <div className="shimmer" style={{ width: '220px', height: '10px', borderRadius: '4px' }} />
+
+          {/* Side-by-side: donut + legend */}
+          <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
+            {/* Donut circle */}
+            <div className="shimmer skeleton-circle" style={{ width: '160px', height: '160px', flexShrink: 0 }} />
+
+            {/* Legend rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="shimmer skeleton-circle" style={{ width: '8px', height: '8px' }} />
+                    <div className="shimmer" style={{ width: '90px', height: '11px', borderRadius: '4px' }} />
+                  </div>
+                  <div className="shimmer" style={{ width: '110px', height: '14px', borderRadius: '4px', marginLeft: '16px' }} />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Top Products list (approx 40%) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="min-h-[28px] flex items-center">
-             <div className="h-3 w-28 bg-surface-panel shimmer rounded-sm" />
+        {/* Right: Breakdown List Card */}
+        <div style={{
+          background: 'var(--bg-surface)', borderRadius: '24px',
+          padding: '24px', border: '1px solid var(--border-default)',
+          display: 'flex', flexDirection: 'column', gap: '16px'
+        }}>
+          {/* Header row with title + toggle */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="shimmer" style={{ width: '140px', height: '10px', borderRadius: '4px' }} />
+            <div className="shimmer" style={{ width: '120px', height: '24px', borderRadius: '8px' }} />
           </div>
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-surface-card border border-border-default rounded-xl p-4 flex justify-between items-center">
-                <div className="space-y-2">
-                  <div className="h-3.5 w-32 bg-surface-panel shimmer rounded-sm" />
-                  <div className="h-2.5 w-16 bg-surface-panel/60 shimmer rounded-sm" />
+
+          {/* List rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="shimmer skeleton-circle" style={{ width: '10px', height: '10px' }} />
+                    <div className="shimmer" style={{ width: `${90 + i * 10}px`, height: '11px', borderRadius: '4px' }} />
+                  </div>
+                  <div className="shimmer" style={{ width: '70px', height: '11px', borderRadius: '4px' }} />
                 </div>
-                <div className="h-4 w-20 bg-surface-panel shimmer rounded-md" />
+                <div className="shimmer" style={{ width: '100%', height: '4px', borderRadius: '2px' }} />
               </div>
             ))}
           </div>
         </div>
+
       </div>
+
+      {/* Revenue vs Target Bar Chart */}
+      <div style={{
+        background: 'var(--bg-surface)', borderRadius: '24px',
+        padding: '24px', border: '1px solid var(--border-default)',
+        display: 'flex', flexDirection: 'column', gap: '24px'
+      }}>
+        <div className="shimmer" style={{ width: '260px', height: '10px', borderRadius: '4px' }} />
+        <div className="shimmer" style={{ width: '100%', height: '280px', borderRadius: '12px' }} />
+      </div>
+
     </div>
   );
 }

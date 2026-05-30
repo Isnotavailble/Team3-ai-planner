@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Download, Sparkles, Cpu, AlertTriangle, TrendingUp, Activity, Box, List } from 'lucide-react';
 import { translations } from '../../data/translations';
 import DashboardSkeleton from './DashboardSkeleton';
@@ -80,19 +80,19 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
     }
   }
 
-  // Radial Gauge Calculations (Dynamic based on activeMetric)
-  const isRevenue = activeMetric === 'revenue';
-  const gaugeCurrentValue = isRevenue ? monthlySales : monthlyExpenses;
-  const gaugeTargetValue = isRevenue 
-    ? (businessProfile?.sales?.monthly || null) 
-    : (businessProfile?.expenses || null);
+  const hasFinancialData = monthlySales !== null && monthlyExpenses !== null && (monthlySales > 0 || monthlyExpenses > 0);
+  const isLoss = hasFinancialData && monthlyExpenses > monthlySales;
   
-  const gaugeLabel = isRevenue 
-    ? (language === 'mm' ? "အရောင်းရငွေ နှင့် ပန်းတိုင်" : "Revenue vs. Target")
-    : (language === 'mm' ? "အသုံးစရိတ် နှင့် ဘတ်ဂျက်" : "Expenses vs. Budget");
-
-  const progressRatio = (gaugeCurrentValue !== null && gaugeTargetValue > 0) ? Math.min(1, gaugeCurrentValue / gaugeTargetValue) : 0;
-  const strokeDashOffset = 440 - (progressRatio * 220); // 440 is the half-circle circumference baseline
+  const profitPieData = hasFinancialData ? (
+    isLoss ? [
+      { name: language === 'mm' ? 'အသုံးစရိတ်' : 'Expenses', value: monthlyExpenses }
+    ] : [
+      { name: language === 'mm' ? 'အသုံးစရိတ်' : 'Expenses', value: monthlyExpenses },
+      { name: language === 'mm' ? 'အမြတ်ငွေ' : 'Net Profit', value: monthlySales - monthlyExpenses }
+    ]
+  ) : [];
+  
+  const PROFIT_COLORS = ['var(--critical)', '#10b981'];
 
   // Recharts Monthly Revenue vs Target History
   let customBarData = [];
@@ -145,7 +145,7 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
   const bestSellingProducts = productSalesList.slice(0, 3);
   const worstSellingProducts = productSalesList.slice().reverse().slice(0, 3);
 
-  // Dynamic Pie Chart Data Generation
+  const isRevenue = activeMetric === 'revenue';
   let pieChartData = [];
   const PIE_COLORS = ['#6B2D7B', '#B85C8E', '#5C7B6B', '#C97755', '#4A5568', '#A0AEC0'];
 
@@ -155,32 +155,12 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
         name: p.name,
         value: p.revenue
       }));
-    } else if (businessProfile?.products && businessProfile.products.length > 0 && monthlySales !== null) {
-      // Fallback: Proportional distribution based on profile product prices
-      const totalPrice = businessProfile.products.reduce((acc, p) => acc + (p.price || 0), 0);
-      pieChartData = businessProfile.products.map(p => {
-        const ratio = totalPrice > 0 ? (p.price || 0) / totalPrice : 1 / businessProfile.products.length;
-        return {
-          name: p.name,
-          value: Math.round(monthlySales * ratio)
-        };
-      });
     }
   } else {
-    // Dynamic Expense Breakdown
-    if (monthlyExpenses !== null) {
-      const hasSuppliers = businessProfile?.suppliers && businessProfile.suppliers.length > 0;
-      const supplierCost = hasSuppliers ? Math.round(monthlyExpenses * 0.55) : Math.round(monthlyExpenses * 0.5);
-      const salariesCost = hasSuppliers ? Math.round(monthlyExpenses * 0.20) : Math.round(monthlyExpenses * 0.25);
-      const rentCost = Math.round(monthlyExpenses * 0.15);
-      const operationsCost = monthlyExpenses - supplierCost - salariesCost - rentCost;
-
-      pieChartData = [
-        { name: language === 'mm' ? "ကုန်ပစ္စည်း ဖိုး" : "Supplier Costs", value: supplierCost },
-        { name: language === 'mm' ? "လစာ များ" : "Salaries", value: salariesCost },
-        { name: language === 'mm' ? "ဆိုင်ခန်းငှားခ" : "Rent & Utilities", value: rentCost },
-        { name: language === 'mm' ? "အထွေထွေ" : "Operations", value: operationsCost }
-      ];
+    // Dynamic Expense Breakdown from CSV (If available in the future)
+    const expenseBreakdown = salesSummary?.expenseBreakdown || null;
+    if (expenseBreakdown) {
+       pieChartData = Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value }));
     }
   }
 
@@ -434,77 +414,108 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
           border: '1px solid var(--border-default)',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          gap: '12px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
         }}>
-          <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            {gaugeLabel}
+          <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '24px' }}>
+            {language === 'mm' ? "အမြတ်ငွေ အချိုးအစား (ရငွေ နှင့် သုံးငွေ)" : "Profit Margin (Revenue vs Expenses)"}
           </span>
 
-          {/* SVG Radial Gauge */}
-          <div style={{ position: 'relative', width: '220px', height: '130px', marginTop: '10px' }}>
-            <svg width="220" height="220" style={{ transform: 'rotate(-180deg)' }}>
-              {/* Background Track */}
-              <circle
-                cx="110" cy="110" r="70"
-                fill="none" stroke="var(--bg-elevated)" strokeWidth="12"
-                strokeDasharray="220" strokeLinecap="round"
-              />
-              {/* Active Fill */}
-              <circle
-                cx="110" cy="110" r="70"
-                fill="none" stroke="var(--text-primary)" strokeWidth="12"
-                strokeDasharray="220"
-                strokeDashoffset={strokeDashOffset}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
-              />
-            </svg>
-            <div style={{
-              position: 'absolute', top: '70px', left: 0, right: 0,
-              textAlign: 'center', display: 'flex', flexDirection: 'column'
-            }}>
-              <span className="font-number" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
-                {gaugeTargetValue && gaugeCurrentValue !== null ? Math.round(progressRatio * 100) + '%' : '-'}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                {t.currentLabel}: {gaugeCurrentValue !== null ? `${gaugeCurrentValue.toLocaleString()} MMK` : '-'}
-              </span>
+          <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flex: 1 }}>
+            {/* Profit vs Expenses Pie Chart */}
+            <div style={{ position: 'relative', width: '220px', height: '220px', flexShrink: 0 }}>
+              {hasFinancialData ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={profitPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={85}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {profitPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PROFIT_COLORS[index % PROFIT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                      formatter={(value) => `${value.toLocaleString()} MMK`} 
+                      contentStyle={{ background: 'var(--surface-tooltip)', color: 'var(--text-on-dark)', borderRadius: '8px', border: 'none', zIndex: 9999 }}
+                      itemStyle={{ color: 'var(--text-on-dark)' }}
+                      wrapperStyle={{ zIndex: 9999 }}
+                    />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{
+                    position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none'
+                  }}>
+                    {isLoss ? (
+                      <>
+                        <span style={{ fontSize: '12px', color: 'var(--critical)', fontWeight: 700 }}>
+                          {language === 'mm' ? "အရှုံးပေါ်နေသည်" : "Operating at Loss"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-number" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
+                          {monthlySales > 0 ? Math.round(((monthlySales - monthlyExpenses) / monthlySales) * 100) : 0}%
+                        </span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: 600 }}>
+                          {language === 'mm' ? "အမြတ်" : "MARGIN"}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 500, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                  {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to display"}
+                </div>
+              )}
             </div>
-          </div>
 
-          <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {t.targetLabel}: <span className="font-number" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{gaugeTargetValue ? `${gaugeTargetValue.toLocaleString()} MMK` : '-'}</span>
-          </div>
+            {/* Financial Summary Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {language === 'mm' ? "စုစုပေါင်း အရောင်းရငွေ" : "Total Revenue"}
+                  </span>
+                </div>
+                <div className="font-number" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', paddingLeft: '16px' }}>
+                  {monthlySales !== null ? monthlySales.toLocaleString() : '-'} <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>MMK</span>
+                </div>
+              </div>
 
-          {/* Toggle Switches: Revenue / Expenses */}
-          <div style={{
-            display: 'flex', gap: '4px', background: 'var(--bg-elevated)',
-            padding: '3px', borderRadius: '8px', width: '100%', maxWidth: '240px', marginTop: '8px'
-          }}>
-            <button
-              onClick={() => setActiveMetric('revenue')}
-              style={{
-                flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px',
-                cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-                background: activeMetric === 'revenue' ? 'var(--bg-surface)' : 'transparent',
-                color: activeMetric === 'revenue' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              {language === 'mm' ? "အရောင်းရငွေ" : "Revenue"}
-            </button>
-            <button
-              onClick={() => setActiveMetric('expenses')}
-              style={{
-                flex: 1, padding: '6px 0', border: 'none', borderRadius: '6px',
-                cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-                background: activeMetric === 'expenses' ? 'var(--bg-surface)' : 'transparent',
-                color: activeMetric === 'expenses' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              {language === 'mm' ? "အသုံးစရိတ်" : "Expenses"}
-            </button>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--critical)' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {language === 'mm' ? "အသုံးစရိတ်" : "Expenses"}
+                  </span>
+                </div>
+                <div className="font-number" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', paddingLeft: '16px' }}>
+                  {monthlyExpenses !== null ? monthlyExpenses.toLocaleString() : '-'} <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>MMK</span>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {language === 'mm' ? "အသားတင် အမြတ်ငွေ" : "Net Profit"}
+                  </span>
+                </div>
+                <div className="font-number" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', paddingLeft: '16px' }}>
+                  {profit !== null ? profit.toLocaleString() : '-'} <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>MMK</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -518,10 +529,39 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
           flexDirection: 'column',
           boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
         }}>
-          <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <List size={14} />
-            {donutTitle}
-          </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <List size={14} />
+              {donutTitle}
+            </span>
+            <div style={{
+              display: 'flex', gap: '4px', background: 'var(--bg-elevated)',
+              padding: '3px', borderRadius: '8px', width: '140px'
+            }}>
+              <button
+                onClick={() => setActiveMetric('revenue')}
+                style={{
+                  flex: 1, padding: '4px 0', border: 'none', borderRadius: '6px',
+                  cursor: 'pointer', fontSize: '10px', fontWeight: 600,
+                  background: activeMetric === 'revenue' ? 'var(--bg-surface)' : 'transparent',
+                  color: activeMetric === 'revenue' ? 'var(--text-primary)' : 'var(--text-secondary)'
+                }}
+              >
+                {language === 'mm' ? "အရောင်း" : "Sales"}
+              </button>
+              <button
+                onClick={() => setActiveMetric('expenses')}
+                style={{
+                  flex: 1, padding: '4px 0', border: 'none', borderRadius: '6px',
+                  cursor: 'pointer', fontSize: '10px', fontWeight: 600,
+                  background: activeMetric === 'expenses' ? 'var(--bg-surface)' : 'transparent',
+                  color: activeMetric === 'expenses' ? 'var(--text-primary)' : 'var(--text-secondary)'
+                }}
+              >
+                {language === 'mm' ? "အသုံးစရိတ်" : "Expenses"}
+              </button>
+            </div>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
             {pieChartData.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', paddingRight: '8px' }}>
@@ -574,7 +614,12 @@ export default function ReportsView({ businessProfile = {}, language = 'mm', isL
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value) => `${value} MMK`} />
+                <Tooltip 
+                  formatter={(value) => `${value} MMK`} 
+                  contentStyle={{ background: 'var(--surface-tooltip)', color: 'var(--text-on-dark)', borderRadius: '8px', border: 'none', zIndex: 9999 }}
+                  itemStyle={{ color: 'var(--text-on-dark)' }}
+                  wrapperStyle={{ zIndex: 9999 }}
+                />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
                 <Bar dataKey="Revenue" fill="var(--text-primary)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Target" fill="var(--text-tertiary)" opacity={0.3} radius={[4, 4, 0, 0]} />
