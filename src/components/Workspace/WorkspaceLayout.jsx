@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Home, BarChart2, TrendingUp, Settings } from 'lucide-react';
+import { Home, BarChart2, TrendingUp, Settings, Smartphone } from 'lucide-react';
 import { translations } from '../../data/translations';
 
 export default function WorkspaceLayout({
@@ -30,7 +30,8 @@ export default function WorkspaceLayout({
     { id: 'home', path: '/workspace', label: t.navHome, icon: Home },
     { id: 'reports', path: '/workspace/reports', label: t.navReports, icon: BarChart2 },
     { id: 'analytics', path: '/workspace/analytics', label: t.navAnalytics, icon: TrendingUp },
-    { id: 'profile', path: '/workspace/profile', label: t.navProfile, icon: Settings }
+    { id: 'profile', path: '/workspace/profile', label: t.navProfile, icon: Settings },
+    { id: 'mobile', path: 'https://lattice-landing-five.vercel.app/', label: t.navMobile, icon: Smartphone, isExternal: true }
   ];
 
   return (
@@ -61,7 +62,13 @@ export default function WorkspaceLayout({
             return (
               <button
                 key={item.id}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  if (item.isExternal) {
+                    window.open(item.path, '_blank');
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
                 onMouseEnter={() => setHoveredItem(item.id)}
                 onMouseLeave={() => setHoveredItem(null)}
                 style={{

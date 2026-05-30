@@ -7,6 +7,7 @@ export const translations = {
     navGoals: "ပန်းတိုင်နှင့် ဘတ်ဂျက်",
     navAnalytics: "ထိုးထွင်းသိမြင်မှု",
     navProfile: "ပရိုဖိုင်နှင့် ဆက်တင်",
+    navMobile: "မိုဘိုင်းဗားရှင်း",
 
     // Common
     loading: "လုပ်ဆောင်နေပါသည်...",
@@ -134,6 +135,7 @@ export const translations = {
     navGoals: "Goals & Budget",
     navAnalytics: "Analytics & Projections",
     navProfile: "Profile & Settings",
+    navMobile: "Mobile Version",
 
     // Common
     loading: "Loading...",

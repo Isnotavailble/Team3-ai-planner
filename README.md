@@ -53,6 +53,7 @@ Once the business profile is generated, a new multi-dimensional metrics section 
 * **Recharts Overlapping Dot Deduplication**: Patched the Trend Analysis chart tooltip to deduplicate lines on coordinate overlap.
 * **Floating-Point Precision Fix**: Resolved JS floating point rounding artifacts in financials dashboard cards.
 * **User-Friendly Naming Overhaul**: Replaced developer-centric jargon ("Interrogate Room" -> "AI Simulation Assistant", "AI Copilot" -> "Ask AI", back button cleanup) to maintain a professional, high-end SaaS product tone.
+* **Mobile Redirection & UI Redesign**: Added a sleek navigation sidebar option for redirecting users to the dedicated mobile app landing page. Refined the Reports Dashboard pie chart with a professional side-by-side thematic legend layout.
 
 ### ⚙️ Developer Mode Graph Toggle
 * **Resource Optimization**: The SVG physics-based relationship map is now hidden behind a **Dev Mode Toggle** on the dashboard card (`MarketGraphCard.jsx`). This prevents high resource consumption on page load and optimizes performance.
