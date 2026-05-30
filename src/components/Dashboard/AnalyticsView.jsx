@@ -1,30 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Play, Cpu, Sparkles, TrendingUp, Users, ShieldAlert, FileText, Activity, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Play, Cpu, Sparkles, Lightbulb } from 'lucide-react';
 import { translations } from '../../data/translations';
 import api from '../../services/api';
 import SimulationSkeleton from '../AIReportPage/SimulationSkeleton';
 import AnalyticsSkeleton from './AnalyticsSkeleton';
 
 export default function AnalyticsView({ 
-  workspace = {}, 
   businessProfile = {}, 
-  onStartInterrogation, 
   language = 'mm',
-  baseInsights: propBaseInsights,
-  setBaseInsights: propSetBaseInsights,
   isLoading = false
 }) {
   const t = translations[language];
 
 
-
   const [stage, setStage] = useState('setup'); // 'setup' | 'running' | 'results'
-  const [logs, setLogs] = useState([]);
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
-  const [expandedCardId, setExpandedCardId] = useState(null);
-  const [expandedBlockIdx, setExpandedBlockIdx] = useState(null);
   
   const [ratios, setRatios] = useState({
     competitors: 70,
@@ -32,28 +23,10 @@ export default function AnalyticsView({
     distributors: 60
   });
 
-  // Dynamic simulation inputs (moved from onboarding)
-  const [targetScenario, setTargetScenario] = useState('Competitor Price Cut');
-  const [expectedResult, setExpectedResult] = useState('Less Profit');
-
   const [simulationData, setSimulationData] = useState([]);
   const [verdictData, setVerdictData] = useState(null);
-  const [localBaseInsights, setLocalBaseInsights] = useState(null);
-  const baseInsights = propBaseInsights !== undefined ? propBaseInsights : localBaseInsights;
-  const setBaseInsights = propSetBaseInsights !== undefined ? propSetBaseInsights : setLocalBaseInsights;
-
-  useEffect(() => {
-    if (propBaseInsights !== undefined) return;
-    async function loadInsights() {
-      try {
-        const insights = await api.getInsights(businessProfile, language);
-        setLocalBaseInsights(insights);
-      } catch (err) {
-        console.error("Failed to fetch insights", err);
-      }
-    }
-    loadInsights();
-  }, [businessProfile, language, propBaseInsights]);
+  const [swot, setSwot] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
 
   // Toggles for the 5 projection lines
   const [visibleLines, setVisibleLines] = useState({
@@ -64,172 +37,55 @@ export default function AnalyticsView({
     customers: false
   });
 
-  const hasRivals = businessProfile?.rivals && businessProfile.rivals.length > 0;
 
 
   const runSimulation = async () => {
     setStage('running');
-    setLogs([]);
-    setProgress(0);
     setError(null);
 
-    const totalRounds = 8;
-    const mockLogs = [
-      language === 'mm' ? 'အဆင့် ၁ - လက်လီဖောက်သည် ကိုယ်စားလှယ်များ ဆန်းစစ်နေသည် (အချက် ၄၀)...' : 'Round 1: Initializing merchant swarm agents (40 agents)...',
-      language === 'mm' ? 'အဆင့် ၂ - ပြိုင်ဘက်များ၏ အရောင်းပမာဏကို တွက်ချက်နေသည်...' : 'Round 2: Competitors assessing retail order volumes...',
-      language === 'mm' ? 'အဆင့် ၃ - ဖောက်သည်များ၏ ကြွေးမြီတောင်းဆိုမှုများအား တွက်ချက်နေသည်...' : 'Round 3: Shopkeepers requesting credit terms...',
-      language === 'mm' ? 'အဆင့် ၄ - ပြိုင်ဘက်ဆိုင်များ၏ ဈေးနှုန်းအားပြိုင်မှုကို ဆန်းစစ်နေသည်...' : 'Round 4: Competitor launching matching pricing campaigns...',
-      language === 'mm' ? 'အဆင့် ၅ - ကုန်ပစ္စည်းလက်ကျန် အခြေအနေများအား တိုက်ဆိုင်စစ်ဆေးနေသည်...' : 'Round 5: Coalition forming: 3 competitor partners matching inventory...',
-      language === 'mm' ? 'အဆင့် ၆ - ဖောက်သည်ပြောင်းလဲမှု အလားအလာများအား ဆန်းစစ်နေသည်...' : 'Round 6: Retailer agents showing high migration to credit programs...',
-      language === 'mm' ? 'အဆင့် ၇ - ကုန်ပစ္စည်းရရှိနိုင်မှု လမ်းကြောင်းများကို ဆန်းစစ်နေသည်...' : 'Round 7: Wholesale suppliers adjusting operational costs...',
-      language === 'mm' ? 'အဆင့် ၈ - ခန့်မှန်းချက်ရလဒ်များကို စုစည်းတွက်ချက်ပြီးစီးပါပြီ...' : 'Round 8: Completing scenario analysis and compiling profit verdict report...'
-    ];
-
-    for (let i = 0; i < totalRounds; i++) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      setLogs(prev => [...prev, mockLogs[i]]);
-      setProgress(((i + 1) / totalRounds) * 100);
-    }
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     try {
       const result = await api.runSimulation('main', ratios, businessProfile);
 
-      const points = (result.projections || []).map(p => ({
-        name: `Month ${p.month}`,
-        profit: p.profit,
-        revenue: p.revenue,
-        expenses: p.expenses,
-        marketShare: p.marketShare,
-        customers: p.customers
+      const points = (result?.projections || []).map(p => ({
+        name: `Month ${p?.month || 0}`,
+        profit: p?.profit || 0,
+        revenue: p?.revenue || 0,
+        expenses: p?.expenses || 0,
+        marketShare: p?.marketShare || 0,
+        customers: p?.customers || 0
       }));
 
       setSimulationData(points);
 
       const aiVerdict = language === 'mm'
-        ? (result.verdictMm || result.verdict)
-        : (result.verdictEn || result.verdict);
+        ? (result?.verdictMm || result?.verdict || '')
+        : (result?.verdictEn || result?.verdict || '');
 
       setVerdictData({
-        confidence: result.confidence || 85,
+        confidence: result?.confidence || 85,
         verdict: aiVerdict,
-        criticalAgents: result.criticalAgents || [],
-        aiInsights: [
-          {
-            id: 'income',
-            title: language === 'mm' ? 'ဝင်ငွေနှင့် ခန့်မှန်းချက်' : 'Income and Prediction',
-            icon: TrendingUp,
-            blocks: [
-              {
-                desc: language === 'mm'
-                  ? 'ရက် ၇ နှင့် ၇ ရက် ခန့်မှန်းချက်အရ လွန်ခဲ့သော ၇ ရက်အတွင်း အရောင်းအဝယ် အချက်အလက်များကို အခြေခံ၍ လာမည့်ရက်သတ္တပတ်အတွက် ဈေးကွက်ဝယ်လိုအားနှင့် အရောင်းပမာဏကို အသေးစိတ် ခန့်မှန်းတွက်ချက်ထားပါသည်။ ဤအချက်အလက်များကို အသုံးပြု၍ သင်၏လုပ်ငန်းလည်ပတ်မှုကို ကြိုတင်ပြင်ဆင်နိုင်ပါသည်။'
-                  : 'Based on the 7-day and 7-day forecast, we have analyzed the sales data from the past week to predict market demand and sales volume for the upcoming week in detail. You can use these insights to proactively prepare your business operations.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'ပြိုင်ဘက်ဈေးနှုန်းများကြောင့် ဝင်ငွေ ၄% ကျဆင်းနိုင်ပါသည်။ ပြိုင်ဘက်ဆိုင်များ၏ ဈေးနှုန်းလျှော့ချ အရောင်းမြှင့်တင်မှုများကြောင့် လာမည့်ကာလအတွင်း သင့်လုပ်ငန်း၏ ဝင်ငွေပမာဏမှာ ၄% ခန့် ကျဆင်းနိုင်ခြေရှိသဖြင့် ကြိုတင်ကာကွယ်မှုများ ပြုလုပ်ထားရန် အရေးကြီးပါသည်။'
-                  : 'Revenue could drop by 4% due to competitor pricing. Due to price-reduction campaigns by local competitors, your business revenue is projected to decline by approximately 4% in the upcoming period, making it crucial to take preventive measures.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'အရောင်းပမာဏထိန်းထားရန် လျှော့ဈေးအစီအစဉ်စဉ်းစားပါ။ ရောင်းအားပမာဏ ကျဆင်းမသွားစေရန်နှင့် လက်ရှိဖောက်သည်များကို ဆက်လက်ထိန်းသိမ်းထားရန် ကုန်ပစ္စည်းအချို့တွင် ကန့်သတ်ကာလတို လျှော့ဈေး သို့မဟုတ် ဝယ်ယူမှုပမာဏအလိုက် မက်လုံးပေးစနစ်များကို ပြုလုပ်ရန် စဉ်းစားသင့်သည်။'
-                  : 'Consider a discount program to maintain sales volume. To prevent sales volume from dropping and to retain existing loyal customers, you should consider offering short-term limited discounts on selected items or volume-based incentives.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'လုပ်ငန်းလည်ပတ်ငွေအခြေအနေ ကောင်းမွန်စေရန် Viber မှတဆင့် ငွေတောင်းခံလွှာစနစ်ကို စနစ်တကျ ပြုလုပ်ထားပါ။ လုပ်ငန်း၏ နေ့စဉ်ငွေစီးဆင်းမှု ပြတ်တောက်မှုမရှိစေရန်အတွက် ကုန်ပစ္စည်းဝယ်ယူပြီးသော ဖောက်သည်များထံသို့ Viber မှတစ်ဆင့် Invoices များကို စနစ်တကျ ပေးပို့ပြီး ငွေချေရန် သတိပေးချက်များကို ပုံမှန်ပြုလုပ်သင့်သည်။'
-                  : 'Properly set up an invoice system via Viber to improve cash flow status. To maintain a smooth daily cash flow without interruptions, ensure you systematically send digital invoices via Viber to buyers and set up regular payment reminders.'
-              }
-            ]
-          },
-          {
-            id: 'swot',
-            title: language === 'mm' ? 'SWOT သုံးသပ်ချက်' : 'SWOT Analysis',
-            icon: Lightbulb,
-            blocks: [
-              {
-                desc: language === 'mm'
-                  ? 'အားသာချက်၊ အားနည်းချက်၊ အခွင့်အလမ်းနှင့် ခြိမ်းခြောက်မှုများကို ၃ ချက်စီ ခွဲခြမ်းစိတ်ဖြာထားပါသည်။ လုပ်ငန်း၏ အတွင်းပိုင်းအခြေအနေနှင့် ပြင်ပဈေးကွက်စိန်ခေါ်မှုများကို သုံးသပ်ပြီး စီမံခန့်ခွဲမှုမဟာဗျူဟာကို စနစ်တကျ ညှိနှိုင်းနိုင်ရန် အဓိကအချက်များကို အသေးစိတ် ဖော်ထုတ်ပြသထားခြင်း ဖြစ်ပါသည်။'
-                  : '3 points each of strengths, weaknesses, opportunities, and threats have been analyzed. By evaluating the internal conditions of the business and external market challenges, we have identified key factors in detail to help you systematically adjust your management strategy.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'အားသာချက်: ဖောက်သည်ဟောင်းများ၏ ယုံကြည်မှု ဆက်လက်ခိုင်မာနေသည်။ သင့်လုပ်ငန်း၏ အကြီးမားဆုံး အားသာချက်မှာ ကာလရှည်ဝယ်ယူလာခဲ့သော ဖောက်သည်ဟောင်းများ၏ ခိုင်မာသော ယုံကြည်ကိုးစားမှုနှင့် Viber/Telegram အုပ်စုများမှတစ်ဆင့် ဆက်သွယ်ရေး ကောင်းမွန်နေခြင်း ဖြစ်သည်။'
-                  : 'Strength: Core customer loyalty remains consistently high. Your store\'s primary strength lies in the strong, enduring trust developed with long-term customers and robust digital connections established via your active Viber and Telegram channels.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'ခြိမ်းခြောက်မှု: ကုန်စည်စီးဆင်းမှု ပြတ်တောက်နိုင်သည့် အန္တရာယ်ရှိသည်။ လက်ရှိသယ်ယူပို့ဆောင်ရေး အခက်အခဲများနှင့် လမ်းခရီးအခြေအနေများကြောင့် အရေးကြီးကုန်ပစ္စည်းများ အချိန်မီ မရောက်ရှိဘဲ လုပ်ငန်းလည်ပတ်မှု ရုတ်တရက် ပြတ်တောက်သွားနိုင်သည့် ပြင်ပခြိမ်းခြောက်မှု ရှိနေပါသည်။'
-                  : 'Threat: Immediate risk from new supply chain disruptions. Due to current transportation bottlenecks and unpredictable logistical delays, there is an external threat that critical inventory products may not arrive on time, causing sudden operational stockouts.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'စိန်ခေါ်မှု: ပြိုင်ဘက်များ၏ ဈေးနှုန်းချအရောင်းမြှင့်တင်မှုများနှင့် ခရက်ဒစ်ပေးစနစ်များကြောင့် စိန်ခေါ်မှုရှိသည်။ ပြိုင်ဘက်ဆိုင်များမှ ဈေးနှုန်းလျှော့ချခြင်းနှင့် ကာလရှည်အကြွေးဝယ်ယူခွင့် (Credit Extensions) များ ပေးအပ်လာခြင်းသည် သင့်ဆိုင်၏ အရောင်းအဝယ်ကို ထိခိုက်စေနိုင်သည့် စိန်ခေါ်မှုတစ်ခု ဖြစ်သည်။'
-                  : 'Challenge: Competitor aggressive pricing campaigns and credit extensions could impact store margins. Aggressive price-matching campaigns and flexible credit terms launched by rival stores present a significant challenge to your business\'s overall profitability.'
-              }
-            ]
-          },
-          {
-            id: 'segments',
-            title: language === 'mm' ? 'ဖောက်သည် အုပ်စုများ' : 'Customer Segments',
-            icon: Users,
-            blocks: [
-              {
-                desc: language === 'mm'
-                  ? 'လက်ရှိဝယ်ယူသူများကို ဝယ်ယူမှုအကြိမ်ရေနှင့် ပမာဏအပေါ် မူတည်၍ ဖောက်သည်အုပ်စု ခွဲခြားသတ်မှတ်ထားပြီး အဓိကအုပ်စု ၁ ခုကို အာရုံစိုက်ရန် ဖော်ထုတ်ထားပါသည်။ ဤသို့ခွဲခြားခြင်းဖြင့် ပစ်မှတ်ထားသော အရောင်းမြှင့်တင်ရေး အစီအစဉ်များကို ပိုမိုထိရောက်စွာ လုပ်ဆောင်နိုင်မည် ဖြစ်သည်။'
-                  : 'Customers are classified based on purchase frequency and volumes, identifying one critical target segment for immediate optimization. This detailed segmentation allows you to execute highly targeted and effective promotional campaigns.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'လက်ကားဝယ်ယူသူများကို ပိုမိုအာရုံစိုက်ပါ။ လုပ်ငန်း၏ ရောင်းအားအများစုမှာ လက်ကားဝယ်ယူသူများထံမှ လာခြင်းဖြစ်သောကြောင့် ၎င်းတို့၏ တိကျသော လိုအပ်ချက်များနှင့် ကြီးမားသော မှာယူမှုများကို အဓိကထား၍ အထူးဂရုစိုက် ဆောင်ရွက်ပေးသင့်ပါသည်။'
-                  : 'Focus specifically on wholesale buyers who are price-sensitive. Since regular wholesale buyers account for the vast majority of your volume stability, prioritizing their specific order demands and addressing their needs is crucial for sustained growth.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'SMS သို့မဟုတ် Viber မှတဆင့် တိုက်ရိုက်ပရိုမိုးရှင်း ပေးပို့ပါ။ ဖောက်သည်များထံသို့ ယေဘုယျကြော်ငြာများ ပေးပို့မည့်အစား မှတ်တမ်းများကို အခြေခံ၍ ရည်ရွယ်ချက်ရှိရှိ တိုက်ရိုက် ပရိုမိုးရှင်းကမ်းလှမ်းချက်များကို SMS နှင့် Viber မှတစ်ဆင့် ကိုယ်တိုင်ကိုယ်ကျ ပေးပို့ပါ။'
-                  : 'Avoid broad marketing; target direct SMS campaigns. Instead of sending generic mass advertisements to all customers, utilize purchase histories to send highly personalized, direct promotional offers via SMS or your dedicated Viber channels.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'တန်ဖိုးမြင့် VIP ဖောက်သည်များအတွက် သီးသန့်ဝယ်ယူခွင့်နှင့် လျှော့ဈေးများကို Viber အဖွဲ့တွင် ဦးစားပေးပေးအပ်ပါ။ ဝယ်ယူမှုအများဆုံး VIP ဖောက်သည်များအတွက် ကုန်ပစ္စည်းအသစ်များကို ဦးစားပေးဝယ်ယူခွင့်နှင့် အထူးလျှော့ဈေးများကို Viber VIP အုပ်စုတွင် သီးသန့်စီစဉ်ပေးပါ။'
-                  : 'Design premium loyalty incentives specifically targeting VIP buyers. Provide exclusive early product access and highly customized VIP discounts within private Viber groups to ensure the long-term retention of your most valuable high-tier accounts.'
-              }
-            ]
-          },
-          {
-            id: 'suggestions',
-            title: language === 'mm' ? 'AI အကြံပြုချက်များ' : 'AI Suggestions',
-            icon: Sparkles,
-            blocks: [
-              {
-                desc: language === 'mm'
-                  ? 'လုပ်ငန်းရေရှည်တိုးတက်စေရန်အတွက် အရောင်းမြှင့်တင်ရေး၊ ကုန်ပစ္စည်းရွေးချယ်မှု၊ ဈေးနှုန်းသတ်မှတ်မှုနှင့် လုပ်ငန်းတိုးချဲ့ရေး စသည့် ကဏ္ဍ ၄ ခုလုံးအတွက် မဟာဗျူဟာများကို ပေါင်းစပ်အသုံးပြုရန် အကြံပြုထားသည်။ ၎င်းတို့ကို အချိုးညီညီ အကောင်အထည်ဖော်ခြင်းက အကျိုးအမြတ်ကို အမြင့်ဆုံးရောက်စေမည်ဖြစ်သည်။'
-                  : 'Integrated strategies across promotions, product mix, pricing tiers, and business growth parameters are recommended. Implementing these carefully balanced, multi-faceted approaches concurrently will maximize your overall profitability and ensure long-term, sustainable market growth.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'ကုန်ပစ္စည်းမဟာဗျူဟာ: ရောင်းအားနည်းသည့် ပစ္စည်းများကို အရောင်းသွက်ပစ္စည်းများနှင့် တွဲရောင်းပါ။ သိုလှောင်ရုံတွင် ကုန်ပစ္စည်းသက်တမ်း ကြာမြင့်နေသော ကုန်ပစ္စည်းများကို အရောင်းရဆုံးကုန်ပစ္စည်းများနှင့် တွဲဖက်၍ ရောင်းချခြင်း (Bundling) ဖြင့် ကုန်ပစ္စည်းလည်ပတ်မှုကို လျင်မြန်စေပြီး နေရာလွတ်များကို ဖန်တီးနိုင်မည်ဖြစ်သည်။'
-                  : 'Product Strategy: Bundle slow-moving items with high-demand goods. Strategically pairing aged warehouse inventory with your fastest-selling products through intelligent bundling will significantly accelerate your overall inventory turnover and swiftly clear out valuable shelf space.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'ဈေးနှုန်းမဟာဗျူဟာ: ပြိုင်ဘက်ဈေးနှုန်းများနှင့် တူညီအောင်ထား၍ ငွေပေးချေမှုသက်တမ်းကို လျှော့ချပါ။ ဈေးနှုန်းကို ပြိုင်ဘက်ဆိုင်များနှင့် တူညီစွာ ထားရှိသော်လည်း အကြွေးပေးချေမှု သက်တမ်းကို တိုတောင်းအောင် ညှိနှိုင်းခြင်းဖြင့် သင့်ဆိုင်၏ ရင်းနှီးငွေလည်ပတ်မှုကို မြန်ဆန်စွာ ပြန်လည်ရရှိစေမည်ဖြစ်သည်။'
-                  : 'Pricing Strategy: Match competitor prices but strictly reduce payment terms. While matching local retail prices keeps you competitive, aggressively negotiating shorter credit payment cycles with buyers is essential to protect and rapidly replenish your operational cash reserves.'
-              },
-              {
-                desc: language === 'mm'
-                  ? 'လက်ကားဝယ်ယူသူများအတွက် ခရက်ဒစ်ငွေပေးချေမှု သက်တမ်းနှင့် ကန့်သတ်ချက်များကို စနစ်တကျ သတ်မှတ်ထားပါ။ လက်ကားဝယ်သူများအား အကြွေးဝယ်ခွင့်ပြုရာတွင် ဝယ်သူတစ်ဦးချင်းစီအလိုက် ခရက်ဒစ်ကန့်သတ်ချက် (Credit Limit) နှင့် ငွေပြန်ဆပ်ရမည့် သက်တမ်းကို တိကျစွာ သတ်မှတ်ထားရန် လိုအပ်ပါသည်။'
-                  : 'Customize wholesale credit policies and tightly enforce credit limits. When extending credit to wholesale partners, it is critically important to clearly define individualized credit limits and strictly enforce payment timelines to safeguard the store\'s operating cash flow.'
-              }
-            ]
-          }
-        ]
+        criticalAgents: result?.criticalAgents || []
       });
+
+      const isMm = language === 'mm';
+      setSwot((result?.swot || []).map(item => ({
+        type: item?.type || 'strength',
+        title: isMm ? (item?.titleMm || item?.title || '') : (item?.titleEn || item?.title || ''),
+        desc: isMm ? (item?.descMm || item?.desc || '') : (item?.descEn || item?.desc || '')
+      })));
+
+      setRecommendations((result?.recommendations || []).map(rec => ({
+        id: rec?.id || `rec-${Math.random()}`,
+        title: isMm ? (rec?.titleMm || rec?.title || '') : (rec?.titleEn || rec?.title || ''),
+        desc: isMm ? (rec?.descMm || rec?.desc || '') : (rec?.descEn || rec?.desc || '')
+      })));
 
       setStage('results');
     } catch (err) {
       console.error(err);
       setError("Failed to run prediction swarm.");
-      setStage('setup');
     }
   };
 
@@ -237,118 +93,60 @@ export default function AnalyticsView({
     return <AnalyticsSkeleton />;
   }
 
+  const getSwotStyles = (type) => {
+    switch (type.toLowerCase()) {
+      case 'strength':
+        return {
+          bg: 'rgba(16, 185, 129, 0.03)',
+          border: '1px solid rgba(16, 185, 129, 0.15)',
+          color: '#10b981',
+          label: language === 'mm' ? 'အားသာချက် (Strength)' : 'Strength'
+        };
+      case 'weakness':
+        return {
+          bg: 'rgba(239, 68, 68, 0.03)',
+          border: '1px solid rgba(239, 68, 68, 0.15)',
+          color: '#ef4444',
+          label: language === 'mm' ? 'အားနည်းချက် (Weakness)' : 'Weakness'
+        };
+      case 'opportunity':
+        return {
+          bg: 'rgba(2, 132, 199, 0.03)',
+          border: '1px solid rgba(2, 132, 199, 0.15)',
+          color: '#0284c7',
+          label: language === 'mm' ? 'အခွင့်လမ်း (Opportunity)' : 'Opportunity'
+        };
+      case 'threat':
+        return {
+          bg: 'rgba(245, 158, 11, 0.03)',
+          border: '1px solid rgba(245, 158, 11, 0.15)',
+          color: '#f59e0b',
+          label: language === 'mm' ? 'ခြိမ်းခြောက်မှု (Threat)' : 'Threat'
+        };
+      default:
+        return {
+          bg: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          color: 'var(--text-secondary)',
+          label: type
+        };
+    }
+  };
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
-      {baseInsights ? (
-        <>
-          {/* HEADER */}
-          <header>
-            <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {t.analyticsTitle}
-            </h1>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              {language === 'mm' ? "စက်မှုဥာဏ်ရည်သုံး စျေးကွက်ခန့်မှန်းချက်များနှင့် မဟာဗျူဟာအကြံပြုချက်များ" : "Swarm intelligence simulation & business projections"}
-            </p>
-          </header>
+      {/* HEADER */}
+      <header>
+        <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-primary)' }}>
+          {t.analyticsTitle}
+        </h1>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+          {language === 'mm' ? "စက်မှုဥာဏ်ရည်သုံး စျေးကွက်ခန့်မှန်းချက်များနှင့် မဟာဗျူဟာအကြံပြုချက်များ" : "Swarm intelligence simulation & business projections"}
+        </p>
+      </header>
 
-          {/* 1. COMPACT KPI HERO */}
-          <section style={{ 
-            background: 'var(--bg-surface)', borderRadius: '24px',
-            border: '1px solid var(--border-default)', padding: '24px 32px',
-            display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
-          }}>
-            {[
-              { 
-                label: language === 'mm' ? "တိုးတက်မှု အမှတ်" : "Growth Score", 
-                val: baseInsights.growthScore
-              },
-              { 
-                label: language === 'mm' ? "ဈေးကွက် အမှတ်" : "Market Score", 
-                val: baseInsights.marketScore
-              },
-              { 
-                label: language === 'mm' ? "အန္တရာယ် အခြေအနေ" : "Risk Level", 
-                val: baseInsights.riskCard.level.charAt(0).toUpperCase() + baseInsights.riskCard.level.slice(1)
-              }
-            ].map((stat, idx, arr) => (
-              <div key={idx} style={{ 
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                  marginRight: idx < arr.length - 1 ? '12px' : '0'
-                }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.label}</span>
-                  <span className="font-number" style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-primary)' }}>{stat.val}</span>
-                </div>
-            ))}
-          </section>
-
-          {/* 2. WEEKLY PREDICTION GRAPHS */}
-          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-            {/* Customer Activity — 7 Day */}
-            <div style={{
-              background: 'var(--bg-surface)', borderRadius: '24px',
-              padding: '24px', border: '1px solid var(--border-default)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
-              display: 'flex', flexDirection: 'column', gap: '16px'
-            }}>
-              <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                {language === 'mm' ? 'ဖောက်သည် ခန့်မှန်းချက် (၇ ရက်)' : 'Customer forecast (7-day)'}
-              </h3>
-              <div style={{ width: '100%', height: '180px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={baseInsights.customerWeekly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value) => `${value} ${language === 'mm' ? 'ဦး' : 'customers'}`} />
-                    <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
-            {/* Financial Health — 7 Day */}
-            <div style={{
-              background: 'var(--bg-surface)', borderRadius: '24px',
-              padding: '24px', border: '1px solid var(--border-default)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
-              display: 'flex', flexDirection: 'column', gap: '16px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  {language === 'mm' ? 'ငွေကြေးကျန်းမာရေး (၇ ရက်)' : 'Financial health (7-day)'}
-                </h3>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {[
-                    { label: language === 'mm' ? 'ဝင်ငွေ' : 'Income', color: 'var(--accent)' },
-                    { label: language === 'mm' ? 'အမြတ်' : 'Profit', color: 'var(--positive)' },
-                    { label: language === 'mm' ? 'ပျမ်းမျှ' : 'Avg', color: 'var(--caution)' }
-                  ].map(l => (
-                    <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <div style={{ width: '8px', height: '3px', borderRadius: '2px', background: l.color }}></div>
-                      <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{l.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ width: '100%', height: '180px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={baseInsights.financialWeekly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(value) => `${value.toLocaleString()}k MMK`} />
-                    <Line type="monotone" dataKey="income" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3 }} name={language === 'mm' ? 'ဝင်ငွေ' : 'Income'} />
-                    <Line type="monotone" dataKey="profit" stroke="var(--positive)" strokeWidth={2} dot={{ r: 3 }} name={language === 'mm' ? 'အမြတ်' : 'Profit'} />
-                    <Line type="monotone" dataKey="average" stroke="var(--caution)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} name={language === 'mm' ? 'ပျမ်းမျှ' : 'Average'} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. MAIN PREDICTIVE SIMULATION PANEL */}
+      {/* 3. MAIN PREDICTIVE SIMULATION PANEL */}
           <section style={{
             background: 'var(--bg-surface)', borderRadius: '24px',
             border: '1px solid var(--border-default)', padding: '24px',
@@ -537,150 +335,198 @@ export default function AnalyticsView({
 
             </div>
 
+            {/* SWOT & AI Recommendations block integrated inside simulation panel */}
+            {(stage === 'results' || stage === 'setup' || stage === 'running') && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '40px',
+                borderTop: '1px solid var(--border-default)',
+                paddingTop: '24px',
+                marginTop: '12px'
+              }}>
+                {/* SWOT Section */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '4px' }}>
+                    <Lightbulb size={18} style={{ color: 'var(--text-primary)' }} />
+                    <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {language === 'mm' ? 'SWOT သုံးသပ်ချက်' : 'SWOT Analysis'}
+                    </h3>
+                  </div>
+                  
+                  {stage === 'running' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: '16px',
+                          padding: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="shimmer" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-tertiary)' }} />
+                            <div className="shimmer" style={{ width: '60px', height: '10px', borderRadius: '3px', background: 'rgba(0,0,0,0.05)' }} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div className="shimmer" style={{ width: '80%', height: '12px', borderRadius: '3px', background: 'rgba(0,0,0,0.05)' }} />
+                            <div className="shimmer" style={{ width: '100%', height: '10px', borderRadius: '3px', background: 'rgba(0,0,0,0.05)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : stage === 'results' && swot.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      {swot.map((item, idx) => {
+                        const styles = getSwotStyles(item.type);
+                        return (
+                          <div key={idx} style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: '16px',
+                            padding: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-tertiary)' }}></div>
+                              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {styles.label}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>
+                                {item.title}
+                              </h4>
+                              <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                {item.desc}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{
+                      height: '140px',
+                      border: '1px dashed var(--border-default)',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-tertiary)',
+                      fontSize: '12px',
+                      padding: '24px',
+                      textAlign: 'center'
+                    }}>
+                      {language === 'mm' ? "SWOT သုံးသပ်ချက် ရရှိရန် စျေးကွက်ခန့်မှန်းချက်ကို အရင်တွက်ချက်ပါ" : "Run simulation to generate SWOT analysis"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recommendations Section */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '4px' }}>
+                    <Sparkles size={18} style={{ color: 'var(--text-primary)' }} />
+                    <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {language === 'mm' ? 'AI အကြံပြုချက်များ' : 'AI Recommendations'}
+                    </h3>
+                  </div>
+                  
+                  {stage === 'running' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: '12px',
+                          padding: '14px 16px',
+                          display: 'flex',
+                          gap: '14px',
+                          alignItems: 'start'
+                        }}>
+                          <div className="shimmer" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                            <div className="shimmer" style={{ width: '60%', height: '12px', borderRadius: '3px', background: 'rgba(0,0,0,0.05)' }} />
+                            <div className="shimmer" style={{ width: '90%', height: '10px', borderRadius: '3px', background: 'rgba(0,0,0,0.05)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : stage === 'results' && recommendations.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {recommendations.map((rec, idx) => (
+                        <div key={rec.id} style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: '12px',
+                          padding: '14px 16px',
+                          display: 'flex',
+                          gap: '14px',
+                          alignItems: 'start'
+                        }}>
+                          <div style={{
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: '8px',
+                            width: '28px',
+                            height: '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            flexShrink: 0
+                          }}>
+                            {idx + 1}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <h4 style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {rec.title}
+                            </h4>
+                            <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                              {rec.desc}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{
+                      height: '140px',
+                      border: '1px dashed var(--border-default)',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-tertiary)',
+                      fontSize: '12px',
+                      padding: '24px',
+                      textAlign: 'center'
+                    }}>
+                      {language === 'mm' ? "AI အကြံပြုချက်များ ရရှိရန် စျေးကွက်ခန့်မှန်းချက်ကို အရင်တွက်ချက်ပါ" : "Run simulation to receive AI recommendations"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
           </section>
 
-          {/* 4. BASELINE AI INSIGHTS (SWOT & Recommendations - Card Model Style) */}
-          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
-            
-            {/* SWOT Card */}
-            <div style={{
-              background: 'var(--bg-surface)', borderRadius: '24px',
-              border: '1px solid var(--border-default)', padding: '24px',
-              display: 'flex', flexDirection: 'column', gap: '24px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}>
-                <Lightbulb size={18} style={{ color: 'var(--text-primary)' }} />
-                <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  {language === 'mm' ? 'SWOT သုံးသပ်ချက်' : 'SWOT Analysis'}
-                </h3>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {baseInsights.swot.map((item, idx) => {
-                  const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
-                  const isPositive = item.type === 'strength' || item.type === 'opportunity';
-                  return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isPositive ? 'var(--positive)' : 'var(--critical)' }}></div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                          {typeLabel}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {item.title}
-                      </div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                        {item.desc}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Recommendations Card */}
-            <div style={{
-              background: 'var(--bg-surface)', borderRadius: '24px',
-              border: '1px solid var(--border-default)', padding: '24px',
-              display: 'flex', flexDirection: 'column', gap: '24px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.01)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}>
-                <Sparkles size={18} style={{ color: 'var(--text-primary)' }} />
-                <h3 style={{ fontSize: '16px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                  {language === 'mm' ? 'AI အကြံပြုချက်များ' : 'AI Recommendations'}
-                </h3>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {baseInsights.recommendations.map((rec, idx) => (
-                  <div key={rec.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }}></div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {language === 'mm' ? 'အကြံပြုချက် ' + (idx + 1) : 'Recommendation ' + (idx + 1)}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {rec.title}
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                      {rec.desc}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </>
-      ) : (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-          {/* Skeleton: Header */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div className="shimmer" style={{ width: '180px', height: '20px', borderRadius: '4px' }} />
-            <div className="shimmer" style={{ width: '300px', height: '12px', borderRadius: '3px' }} />
-          </div>
-
-          {/* Skeleton: KPI Hero Row */}
-          <div style={{
-            background: 'var(--bg-surface)', borderRadius: '24px',
-            border: '1px solid var(--border-default)', padding: '24px 32px',
-            display: 'flex', justifyContent: 'space-around', alignItems: 'center'
-          }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <div className="shimmer" style={{ width: '80px', height: '10px', borderRadius: '3px' }} />
-                <div className="shimmer" style={{ width: '48px', height: '26px', borderRadius: '4px' }} />
-              </div>
-            ))}
-          </div>
-
-          {/* Skeleton: Two Weekly Graph Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            {[1,2].map(i => (
-              <div key={i} style={{
-                background: 'var(--bg-surface)', borderRadius: '24px',
-                padding: '24px', border: '1px solid var(--border-default)',
-                display: 'flex', flexDirection: 'column', gap: '16px'
-              }}>
-                <div className="shimmer" style={{ width: '140px', height: '10px', borderRadius: '3px' }} />
-                <div className="shimmer" style={{ width: '100%', height: '180px', borderRadius: '8px' }} />
-              </div>
-            ))}
-          </div>
-
-          {/* Skeleton: Simulation Panel Placeholder */}
-          <div style={{
-            background: 'var(--bg-surface)', borderRadius: '24px',
-            border: '1px solid var(--border-default)', padding: '24px',
-            display: 'flex', flexDirection: 'column', gap: '16px'
-          }}>
-            <div className="shimmer" style={{ width: '200px', height: '12px', borderRadius: '3px' }} />
-            <div className="shimmer" style={{ width: '100%', height: '220px', borderRadius: '8px' }} />
-          </div>
-
-          {/* Skeleton: SWOT + Recommendations */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            {[1,2].map(i => (
-              <div key={i} style={{
-                background: 'var(--bg-surface)', borderRadius: '24px',
-                padding: '24px', border: '1px solid var(--border-default)',
-                display: 'flex', flexDirection: 'column', gap: '12px'
-              }}>
-                <div className="shimmer" style={{ width: '120px', height: '10px', borderRadius: '3px' }} />
-                {[1,2,3].map(j => (
-                  <div key={j} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div className="shimmer" style={{ width: '100%', height: '10px', borderRadius: '3px' }} />
-                    <div className="shimmer" style={{ width: '85%', height: '10px', borderRadius: '3px' }} />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
     </div>
   );

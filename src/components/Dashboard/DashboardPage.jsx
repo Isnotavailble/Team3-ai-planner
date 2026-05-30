@@ -1,9 +1,15 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, ArrowRight, AlertCircle, ShoppingBag, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { translations } from '../../data/translations';
 import DashboardSkeleton from './DashboardSkeleton';
+import api from '../../services/api';
+
+// Simple module-level cache to prevent refetching when switching tabs
+let dashboardCache = null;
+let lastProfileString = null;
+let lastLanguage = null;
 
 const iconMap = {
   AlertCircle: AlertCircle,
@@ -12,95 +18,59 @@ const iconMap = {
   User: User
 };
 
-export default function DashboardPage({ workspace = {}, businessProfile = {}, dashboardData, selectedNodeId, handleSelectNode, language = 'mm' }) {
+export default function DashboardPage({ businessProfile = {}, language = 'mm', isLoading = false }) {
   const navigate = useNavigate();
   const t = translations[language] || translations['en'];
 
-  // 1. Chart Choices
-  const chartChoices = [];
-  if (dashboardData) {
-    const {
-      availablePeriods = [],
-      chartData
-    } = dashboardData;
-    if (chartData && chartData.length > 0) {
-      chartChoices.push('history');
-    }
-    (availablePeriods || []).forEach(p => {
-      chartChoices.push(p);
-    });
-  }
-
-  // State for active chart choice
-  const [activeChartPeriod, setActiveChartPeriod] = React.useState(() => {
-    return chartChoices[0] || null;
+  const [dashboardData, setDashboardData] = useState(() => {
+    // If language changed, invalidate initial state cache
+    if (lastLanguage !== language) return null;
+    return dashboardCache;
   });
+  const [isFetching, setIsFetching] = useState(!dashboardData);
 
-  // Sync active period on update
-  React.useEffect(() => {
-    if (chartChoices.length > 0 && !chartChoices.includes(activeChartPeriod)) {
-      setActiveChartPeriod(chartChoices[0]);
+  useEffect(() => {
+    if (isLoading) return; // Wait until global profile finishes loading
+    
+    const currentProfileString = JSON.stringify(businessProfile);
+    
+    // Check cache
+    if (dashboardCache && lastProfileString === currentProfileString && lastLanguage === language) {
+      return;
     }
-  }, [dashboardData]);
 
-  if (!dashboardData) {
+    async function loadData() {
+      setIsFetching(true);
+      const data = await api.getDashboardData(businessProfile, language);
+      dashboardCache = data;
+      lastProfileString = currentProfileString;
+      lastLanguage = language;
+      setDashboardData(data);
+      setIsFetching(false);
+    }
+    
+    loadData();
+  }, [businessProfile, language, isLoading, dashboardData]);
+
+  if (isLoading || isFetching || !dashboardData) {
     return <DashboardSkeleton />;
   }
 
   const {
     metrics,
-    chartData,
     networkItems,
     attentionItems,
     topProducts
   } = dashboardData;
 
-  const { dailySales, weeklySales, monthlySales, yearlySales, monthlyExpenses, netProfit, itemsLowCount } = metrics;
+  const { weeklySales, monthlySales, monthlyExpenses, netProfit } = metrics;
 
-  // Sinusoidal trend generator for manual periods
-  const generateSimulatedData = (period, baseValue) => {
-    const dataPoints = [];
-    let count = 6;
-    let labelPrefix = '';
-
-    if (period === 'daily') {
-      count = 7;
-      labelPrefix = 'Day ';
-    } else if (period === 'weekly') {
-      count = 6;
-      labelPrefix = 'Week ';
-    } else if (period === 'monthly') {
-      count = 6;
-      labelPrefix = 'Month ';
-    } else if (period === 'yearly') {
-      count = 5;
-      labelPrefix = 'Year ';
-    }
-
-    for (let i = 1; i <= count; i++) {
-      // Sine wave with +-15% variation
-      const variance = Math.sin(i * 1.2) * 0.15;
-      const value = Math.round(baseValue * (1 + variance));
-      dataPoints.push({
-        name: `${labelPrefix}${i}`,
-        sales: value
-      });
-    }
-    return dataPoints;
-  };
-
-  // Get active chart data
-  let activeChartData = [];
-  if (activeChartPeriod === 'history') {
-    activeChartData = chartData;
-  } else if (activeChartPeriod === 'daily' && dailySales !== null) {
-    activeChartData = generateSimulatedData('daily', dailySales);
-  } else if (activeChartPeriod === 'weekly' && weeklySales !== null) {
-    activeChartData = generateSimulatedData('weekly', weeklySales);
-  } else if (activeChartPeriod === 'monthly' && monthlySales !== null) {
-    activeChartData = generateSimulatedData('monthly', monthlySales);
-  } else if (activeChartPeriod === 'yearly' && yearlySales !== null) {
-    activeChartData = generateSimulatedData('yearly', yearlySales);
+  let clientChartData = [];
+  if (businessProfile?.salesHistory && businessProfile.salesHistory.length > 0) {
+    clientChartData = businessProfile.salesHistory.map(h => ({
+      name: h.date,
+      sales: h.sales
+    })).reverse();
   }
 
   // 2. Build dynamic KPI cards (Restricted to exactly 4 for the premium layout)
@@ -209,88 +179,48 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
         {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Left Column: Sales Chart */}
-        <section className="space-y-4">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
-            <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-              {language === 'mm' ? "အရောင်း မှတ်တမ်း" : "Sales History"}
-            </h3>
-            {chartChoices.length > 1 && (
-              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-default)' }}>
-                {chartChoices.map(choice => {
-                  let label = '';
-                  if (choice === 'history') {
-                    label = language === 'mm' ? 'တင်သွင်းမှု' : 'Imported';
-                  } else if (choice === 'daily') {
-                    label = language === 'mm' ? 'နေ့စဉ်' : 'Daily';
-                  } else if (choice === 'weekly') {
-                    label = language === 'mm' ? 'အပတ်စဉ်' : 'Weekly';
-                  } else if (choice === 'monthly') {
-                    label = language === 'mm' ? 'လစဉ်' : 'Monthly';
-                  } else if (choice === 'yearly') {
-                    label = language === 'mm' ? 'နှစ်စဉ်' : 'Yearly';
-                  }
-
-                  const isActive = activeChartPeriod === choice;
-                  return (
-                    <button
-                      key={choice}
-                      onClick={() => setActiveChartPeriod(choice)}
-                      style={{
-                        background: isActive ? 'var(--bg-surface)' : 'transparent',
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        fontWeight: isActive ? 600 : 500,
-                        cursor: 'pointer',
-                        boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-default)', height: '280px', boxShadow: '0 4px 24px rgba(0,0,0,0.02)' }}>
-            {activeChartData && activeChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activeChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-default)" strokeOpacity={0.5} />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
-                    dy={12} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={(value) => `${value} MMK`}
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
-                    dx={-10}
-                    width={80}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`${value} MMK`, language === 'mm' ? "အရောင်း (Sales)" : "Sales"]}
-                    contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
-                    itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
-                    cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '3 3' }}
-                  />
-                  <Line type="monotone" dataKey="sales" stroke="var(--accent)" strokeWidth={3} dot={{ r: 4, fill: 'var(--bg-surface)', stroke: 'var(--accent)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Not enough data to show"}
-              </div>
-            )}
-          </div>
-        </section>
+          <section className="space-y-4">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
+              <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                {language === 'mm' ? "အရောင်း မှတ်တမ်း" : "Sales History"}
+              </h3>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-default)', height: '280px', boxShadow: '0 4px 24px rgba(0,0,0,0.02)' }}>
+              {clientChartData && clientChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={clientChartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-default)" strokeOpacity={0.5} />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
+                      dy={12} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickFormatter={(value) => `${value} MMK`}
+                      tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} 
+                      dx={-10}
+                      width={80}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`${value} MMK`, language === 'mm' ? "အရောင်း (Sales)" : "Sales"]}
+                      contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
+                      itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                      cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                    />
+                    <Line type="monotone" dataKey="sales" stroke="var(--accent)" strokeWidth={3} dot={{ r: 4, fill: 'var(--bg-surface)', stroke: 'var(--accent)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                  {language === 'mm' ? "ပြသရန် ဒေတာ မလုံလောက်ပါ" : "Data is not enough"}
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Left Column: Needs Attention Queue (Raw Icons) */}
         <section className="space-y-4">
@@ -303,6 +233,11 @@ export default function DashboardPage({ workspace = {}, businessProfile = {}, da
               return (
                 <div 
                   key={idx}
+                  onClick={() => {
+                    if (item.titleEn === 'Not enough data' || item.descEn?.includes('Profile')) {
+                      navigate('/workspace/profile');
+                    }
+                  }}
                   style={{
                     background: 'var(--bg-surface)',
                     borderRadius: '12px',

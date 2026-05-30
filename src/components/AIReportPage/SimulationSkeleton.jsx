@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export default function SimulationSkeleton({ showGraph = true, showCards = true }) {
   return (

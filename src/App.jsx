@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import api, { calculateMissingSales } from './services/api';
 import Onboarding from './components/Onboarding/Onboarding';
 import Layout from './components/Layout/Layout';
@@ -8,7 +8,6 @@ import DashboardPage from './components/Dashboard/DashboardPage';
 import ReportsView from './components/Dashboard/ReportsView';
 import AnalyticsView from './components/Dashboard/AnalyticsView';
 import ProfileView from './components/Dashboard/ProfileView';
-import { mockHistories } from './data/mockHistories';
 import AuthPage from './components/AuthPage';
 import { supabase } from './utils/supabaseClient';
 
@@ -37,12 +36,11 @@ export default function App() {
     materials: []
   });
 
-  const [dashboardData, setDashboardData] = useState(null);
-  const [baseInsights, setBaseInsights] = useState(null);
+
 
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
-  const emptyProfileTemplate = {
+  const emptyProfileTemplate = useMemo(() => ({
     businessName: null,
     product: null,
     hasPOS: null,
@@ -56,16 +54,23 @@ export default function App() {
     targetScenario: null,
     expectedResult: null,
     thresholds: { inventoryLow: null }
-  };
+  }), []);
 
   const [businessProfile, setBusinessProfile] = useState(emptyProfileTemplate);
+  const [excelAuditResult, setExcelAuditResult] = useState(null);
+
+  // Invalidate Excel Audit Cache on new sales history upload
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExcelAuditResult(null);
+  }, [businessProfile?.salesHistory]);
 
   const [session, setSession] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   const navigate = useNavigate();
-  const location = useLocation();
+
 
   // Listen to Supabase Auth State
   useEffect(() => {
@@ -95,7 +100,7 @@ export default function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [emptyProfileTemplate]);
 
   // Map database profile columns to frontend businessProfile shape
   const mapDbProfileToBusinessProfile = useCallback((dbProfile) => {
@@ -115,13 +120,14 @@ export default function App() {
       expectedResult: dbProfile.expected_result || null,
       thresholds: dbProfile.thresholds || { inventoryLow: null }
     };
-  }, []);
+  }, [emptyProfileTemplate]);
 
   const userId = session?.user?.id;
 
   // Load User Profile from Database via Backend API
   useEffect(() => {
     if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsProfileLoading(false);
       return;
     }
@@ -137,6 +143,7 @@ export default function App() {
         if (data && data.profile) {
           console.log('User profile loaded from backend:', data.profile);
           setBusinessProfile(mapDbProfileToBusinessProfile(data.profile));
+          setBaseWorkspace(data);
         }
       } catch (err) {
         console.error('Failed to load user profile via backend:', err);
@@ -146,7 +153,7 @@ export default function App() {
     }
 
     loadUserProfile();
-  }, [userId, mapDbProfileToBusinessProfile]);
+  }, [userId, mapDbProfileToBusinessProfile, emptyProfileTemplate]);
 
   // Sync profile updates (e.g. from settings, onboarding, dashboard) to Supabase DB via Backend API
   const updateBusinessProfile = async (updater) => {
@@ -161,7 +168,10 @@ export default function App() {
     const calculatedSales = calculateMissingSales(newProfile.sales);
     const profileWithCalculatedSales = {
       ...newProfile,
-      sales: calculatedSales
+      sales: {
+        ...(newProfile.sales || {}),
+        ...calculatedSales
+      }
     };
 
     setBusinessProfile(profileWithCalculatedSales);
@@ -173,6 +183,7 @@ export default function App() {
         if (data && data.profile) {
           console.log('Profile successfully updated via backend:', data.profile);
           setBusinessProfile(mapDbProfileToBusinessProfile(data.profile));
+          setBaseWorkspace(data);
         }
       } catch (err) {
         console.error('Failed to sync profile update with backend:', err);
@@ -181,6 +192,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsHistoryLoading(true);
     const timer = setTimeout(() => {
       setIsHistoryLoading(false);
@@ -188,25 +200,12 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Fetch workspace data on mount and when businessProfile or language updates
-  useEffect(() => {
-    if (!userId) return; // Do not fetch if user is not logged in or logged out
-    if (isProfileLoading) return; // Wait until profile loads!
 
-    async function load() {
-      const data = await api.getWorkspaceData(businessProfile);
-      setBaseWorkspace(data);
-      const dData = await api.getDashboardData(businessProfile, language);
-      setDashboardData(dData);
-      const insights = await api.getInsights(businessProfile, language);
-      setBaseInsights(insights);
-    }
-    load();
-  }, [businessProfile, language, isProfileLoading, userId]);
 
   // Compute dynamic workspace data
   useEffect(() => {
     if (!baseWorkspace.entities.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkspace({
       entities: baseWorkspace.entities,
       edges: baseWorkspace.edges,
@@ -279,9 +278,8 @@ export default function App() {
             <DashboardPage 
               workspace={workspace} 
               businessProfile={businessProfile} 
-              dashboardData={dashboardData}
               language={language}
-              isLoading={isHistoryLoading || isProfileLoading || !dashboardData}
+              isLoading={isHistoryLoading || isProfileLoading}
             />
           } />
           
@@ -290,7 +288,9 @@ export default function App() {
               workspace={workspace} 
               businessProfile={businessProfile} 
               language={language}
-              isLoading={isHistoryLoading || isProfileLoading || !dashboardData}
+              isLoading={isHistoryLoading || isProfileLoading}
+              excelAuditResult={excelAuditResult}
+              setExcelAuditResult={setExcelAuditResult}
             />
           } />
 
@@ -299,9 +299,7 @@ export default function App() {
               workspace={workspace}
               businessProfile={businessProfile} 
               language={language}
-              baseInsights={baseInsights}
-              setBaseInsights={setBaseInsights}
-              isLoading={isHistoryLoading || isProfileLoading || !dashboardData}
+              isLoading={isHistoryLoading || isProfileLoading}
             />
           } />
 
@@ -312,7 +310,7 @@ export default function App() {
               setBusinessProfile={updateBusinessProfile}
               language={language}
               setLanguage={setLanguage}
-              isLoading={isHistoryLoading || isProfileLoading || !dashboardData}
+              isLoading={isHistoryLoading || isProfileLoading}
             />
           } />
         </Route>

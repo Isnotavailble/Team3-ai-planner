@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Globe, MessageCircle, Send, Check, FileUp, Settings, LogOut, Sliders, Plus, Trash2, Users, ShoppingBag, Coins } from 'lucide-react';
+import { Globe, Check, FileUp, LogOut, Sliders, Plus, Trash2 } from 'lucide-react';
 import { translations } from '../../data/translations';
 import { supabase } from '../../utils/supabaseClient';
 import api from '../../services/api';
 import ProfileSkeleton from './ProfileSkeleton';
 
-export default function ProfileView({ workspace = {}, businessProfile = {}, setBusinessProfile, language = 'mm', setLanguage, isLoading = false }) {
+export default function ProfileView({ businessProfile = {}, setBusinessProfile, language = 'mm', setLanguage, isLoading = false }) {
   const t = translations[language] || translations['en'];
 
 
 
-  // Telegram Linking State
-  const [telegramLinked, setTelegramLinked] = useState(false);
-  const [connectionCode] = useState("L9-B28"); // Mock 6-character linking code
+  // Telegram Linking State (Removed)
 
   const [userEmail, setUserEmail] = useState('');
   React.useEffect(() => {
@@ -29,6 +27,7 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
   
   React.useEffect(() => {
     if (businessProfile?.businessName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditName(businessProfile.businessName);
     }
   }, [businessProfile?.businessName]);
@@ -55,7 +54,8 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState('operations'); // 'operations' | 'financials' | 'network' | 'sales' | 'inventory'
   
-  const [inventoryLow, setInventoryLow] = useState(businessProfile?.thresholds?.inventoryLow || 10);
+  
+
 
   const [product, setProduct] = useState(businessProfile?.product || '');
   const [hasPOS, setHasPOS] = useState(businessProfile?.hasPOS || false);
@@ -88,6 +88,7 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
   // Sync state variables with profile updates
   React.useEffect(() => {
     if (businessProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProduct(businessProfile.product || '');
       setHasPOS(businessProfile.hasPOS || false);
       setExpenses(businessProfile.expenses || '');
@@ -209,17 +210,6 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
   const [uploadProgress, setUploadProgress] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
 
-  const handleSaveThreshold = () => {
-    setBusinessProfile(prev => ({
-      ...prev,
-      thresholds: {
-        ...prev.thresholds,
-        inventoryLow: parseInt(inventoryLow) || 10
-      }
-    }));
-    setShowSettingsModal(false);
-  };
-
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => { setIsDragging(false); };
   const handleDrop = async (e) => {
@@ -234,6 +224,19 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
     if (!file) return;
     processSalesFile(file);
   };
+
+  const handleResetSalesData = () => {
+    setBusinessProfile(prev => ({
+      ...prev,
+      salesHistory: [],
+      sales: {
+        ...(prev.sales || {}),
+        summary: null
+      }
+    }));
+    setFilePreview(null);
+  };
+
   const processSalesFile = async (file) => {
     setUploadProgress({ step: language === 'mm' ? 'ဖိုင်ကို ဆာဗာသို့ တင်နေပါသည်...' : 'Uploading file to server...', value: 30 });
     try {
@@ -242,7 +245,11 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
       if (response && response.success) {
         setBusinessProfile(prev => ({
           ...prev,
-          salesHistory: response.data
+          salesHistory: response.data,
+          sales: {
+            ...(prev.sales || {}),
+            summary: response.summary
+          }
         }));
         setFilePreview(response.data.slice(0, 5));
       } else {
@@ -437,80 +444,7 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
       </section>
 
       {/* CHANNELS INTEGRATIONS */}
-      <section className="space-y-4">
-        <h3 className="mono" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-secondary)', fontWeight: 600 }}>
-          {language === 'mm' ? "ချိတ်ဆက်ထားသော စနစ်များ" : "Integrations & Channels"}
-        </h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          
-          {/* Telegram Bot */}
-          <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-            borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Send size={18} style={{ color: '#0088cc' }} />
-                <div>
-                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {t.telegramLink}
-                  </h4>
-                  <p className="mono" style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>@LatticeMyanmarBot</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setTelegramLinked(!telegramLinked)}
-                style={{
-                  padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-default)',
-                  background: telegramLinked ? 'rgba(92, 123, 107, 0.1)' : 'transparent',
-                  color: telegramLinked ? 'var(--positive)' : 'var(--text-secondary)',
-                  fontSize: '11px', fontWeight: 600, cursor: 'pointer'
-                }}
-              >
-                {telegramLinked ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={12} /> {t.linkedStatus}</span>
-                ) : (
-                  language === 'mm' ? "ချိတ်ဆက်မည်" : "Connect Bot"
-                )}
-              </button>
-            </div>
-
-            {!telegramLinked && (
-              <div style={{
-                background: 'var(--bg-elevated)', borderRadius: '8px', padding: '12px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-              }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                  {t.viberInstructions}
-                </span>
-                <div style={{ textAlign: 'right' }}>
-                  <span className="mono" style={{ fontSize: '9px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{t.telegramCodeLabel}</span>
-                  <div className="font-number" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{connectionCode}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Viber share setup */}
-          <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-            borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '12px'
-          }}>
-            <MessageCircle size={20} style={{ color: '#7360F2' }} />
-            <div style={{ flex: 1 }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {t.viberLink}
-              </h4>
-              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {t.viberInstructions}
-              </p>
-            </div>
-            <span className="mono" style={{ fontSize: '9px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>SHARE SHEET</span>
-          </div>
-        </div>
-      </section>
+    
 
       {/* BUSINESS QUESTIONNAIRE & SYSTEM SETTINGS */}
       <section className="space-y-4">
@@ -995,6 +929,21 @@ export default function ProfileView({ workspace = {}, businessProfile = {}, setB
                           ))}
                         </div>
                       )}
+                      
+                      <button
+                        onClick={handleResetSalesData}
+                        style={{
+                          marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px',
+                          background: 'rgba(239, 68, 68, 0.1)', color: 'var(--critical)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)', padding: '8px 12px',
+                          borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          width: '100%', justifyContent: 'center'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        {language === 'mm' ? "တင်သွင်းထားသော စာရင်းဖျက်မည်" : "Reset Uploaded Data"}
+                      </button>
+
                     </div>
                   )}
                 </div>

@@ -1,20 +1,11 @@
 import axios from 'axios';
 import { mapToEntityDTO } from '../dtos/entity.dto';
 import { mapToEdgeDTO } from '../dtos/edge.dto';
-import { mapToSimulationDTO } from '../dtos/simulation.dto';
-import { mapToDashboardDTO } from '../dtos/dashboard.dto';
 import { mapToInsightsDTO } from '../dtos/insights.dto';
 import { supabase } from '../utils/supabaseClient';
-import {
-  RAW_ENTITIES,
-  RAW_EDGES,
-  RAW_MATERIALS,
-  RAW_SIM_RESULTS,
-  RAW_INSIGHTS
-} from '../data/mockData';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:54321/functions/v1/api';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 
 axios.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -78,10 +69,10 @@ export function calculateMissingSales(sales) {
 
 class LatticeApiService {
   constructor() {
-    this.entities = [...RAW_ENTITIES];
-    this.edges = [...RAW_EDGES];
-    this.materials = [...RAW_MATERIALS];
-    this.simResults = { ...RAW_SIM_RESULTS };
+    this.entities = [];
+    this.edges = [];
+    this.materials = [];
+    this.simResults = {};
   }
 
   async uploadSalesFile(file) {
@@ -97,6 +88,18 @@ class LatticeApiService {
     } catch (e) {
       console.error('Failed to upload sales file:', e);
       throw e;
+    }
+  }
+
+  async runExcelAudit(salesHistory, products = [], language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    try {
+      const response = await axios.post(`${API_URL}/insights/excel-audit`, { salesHistory, products, language });
+      return response.data;
+    } catch (e) {
+      console.warn('Backend unavailable or error in excel-audit', e);
+      return null;
     }
   }
 
@@ -125,7 +128,8 @@ class LatticeApiService {
       daily: null,
       weekly: null,
       yearly: null,
-      ...calculatedSales
+      ...calculatedSales,
+      summary: profile?.sales?.summary || null
     };
 
     // Ensure array fields are actually arrays
@@ -138,7 +142,7 @@ class LatticeApiService {
     // Clean up numeric values
     validated.expenses = profile?.expenses !== undefined && profile.expenses !== null ? parseFloat(validated.expenses) || 0 : null;
     for (const key in validated.sales) {
-      if (validated.sales[key] !== null) {
+      if (key !== 'summary' && validated.sales[key] !== null) {
         validated.sales[key] = parseFloat(validated.sales[key]) || 0;
       }
     }
@@ -193,6 +197,45 @@ class LatticeApiService {
     }
   }
 
+  async getInsightsStats(businessProfile, language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/insights/stats`, { businessProfile: cleanProfile, language });
+      return mapToInsightsDTO(response.data, language);
+    } catch (e) {
+      console.warn('Backend unavailable or error', e);
+      return null;
+    }
+  }
+
+  async getInsightsSwot(businessProfile, language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/insights/swot`, { businessProfile: cleanProfile, language });
+      return mapToInsightsDTO(response.data, language);
+    } catch (e) {
+      console.warn('Backend unavailable or error', e);
+      return null;
+    }
+  }
+
+  async getInsightsRecommendations(businessProfile, language = 'mm') {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const cleanProfile = this.validateProfile(businessProfile);
+    try {
+      const response = await axios.post(`${API_URL}/insights/recommendations`, { businessProfile: cleanProfile, language });
+      return mapToInsightsDTO(response.data, language);
+    } catch (e) {
+      console.warn('Backend unavailable or error', e);
+      return null;
+    }
+  }
+
   async importDocument({ fileType, fileName, url }) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     const docId = `doc-${Date.now()}`;
@@ -230,7 +273,7 @@ class LatticeApiService {
     }
   }
 
-  async sendChatMessage(agentId, messages) {
+  async sendChatMessage(agentId) {
     return {
       sender: agentId.toUpperCase(),
       text: "Chat is currently disabled in backend architecture.",
@@ -239,5 +282,5 @@ class LatticeApiService {
   }
 }
 
-export const api = new LatticeApiService();
+const api = new LatticeApiService();
 export default api;

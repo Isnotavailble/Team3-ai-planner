@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, User, Plus, Sparkles, ChevronDown } from 'lucide-react';
-import { mockHistories } from '../../data/mockHistories';
+
+import { useLocation, Outlet } from 'react-router-dom';
+import { HelpCircle, User } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
 export default function Layout({ language = 'mm' }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const isOnboarding = location.pathname === '/';
 
@@ -56,19 +53,6 @@ export default function Layout({ language = 'mm' }) {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1.5 rounded-md cursor-pointer text-xs font-medium"
-              style={{
-                background: 'transparent', border: '1px solid var(--border-default)',
-                height: '32px', padding: '0 12px', color: 'var(--text-secondary)'
-              }}
-            >
-              <Plus size={12} /> {language === 'mm' ? "အစမှ ပြန်စရန်" : "New Session"}
-            </button>
-
-            <div className="w-px h-4 mx-1" style={{ background: 'var(--border-default)' }} />
 
             <div className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
               style={{

@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Home, BarChart2, TrendingUp, Settings } from 'lucide-react';
 import { translations } from '../../data/translations';
 
 export default function WorkspaceLayout({
-  workspace,
   language = 'mm'
 }) {
   const navigate = useNavigate();
@@ -118,7 +117,7 @@ export default function WorkspaceLayout({
               padding: '0 2px'
             }}
           >
-            SYSTEM ONLINE &middot; V1.0.0
+            Made with Love ❤️
           </div>
         </div>
       </aside>

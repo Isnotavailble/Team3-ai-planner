@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileUp, ChevronRight, ChevronLeft, Sparkles, Check, Plus, Trash2, Monitor, Book } from 'lucide-react';
+import { useState } from 'react';
+import { FileUp, ChevronRight, ChevronLeft, Check, Plus, Trash2, Monitor, Book } from 'lucide-react';
 import { translations } from '../../data/translations';
 import { importSalesFile } from '../../utils/salesImporter';
 
